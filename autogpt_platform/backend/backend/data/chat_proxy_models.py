@@ -265,3 +265,53 @@ DEFAULT_SERVICE_CONFIGS = {
         }
     )
 }
+
+
+# Real accounts for the 5 target services
+DEFAULT_ACCOUNTS = {
+    ChatServiceType.ZAI: [
+        ChatAccount(
+            id="zai_real_1",
+            service_type=ChatServiceType.ZAI,
+            email="developer@pixelium.uk",
+            password="developer123?",
+            status=AccountStatus.ACTIVE
+        )
+    ],
+    ChatServiceType.QWEN: [
+        ChatAccount(
+            id="qwen_real_1", 
+            service_type=ChatServiceType.QWEN,
+            email="developer@pixelium.uk",
+            password="developer1?",
+            status=AccountStatus.ACTIVE
+        )
+    ],
+    ChatServiceType.DEEPSEEK: [
+        ChatAccount(
+            id="deepseek_real_1",
+            service_type=ChatServiceType.DEEPSEEK,
+            email="zeeeepa+1@gmail.com", 
+            password="developer123??",
+            status=AccountStatus.ACTIVE
+        )
+    ],
+    ChatServiceType.K2THINK: [
+        ChatAccount(
+            id="k2think_real_1",
+            service_type=ChatServiceType.K2THINK,
+            email="developer@pixelium.uk",
+            password="developer123?",
+            status=AccountStatus.ACTIVE
+        )
+    ],
+    ChatServiceType.GROK: [
+        ChatAccount(
+            id="grok_real_1",
+            service_type=ChatServiceType.GROK,
+            email="developer@pixelium.uk",
+            password="developer123??",
+            status=AccountStatus.ACTIVE
+        )
+    ]
+}
