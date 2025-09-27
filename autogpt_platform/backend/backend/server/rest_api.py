@@ -21,6 +21,7 @@ import backend.data.user
 import backend.integrations.webhooks.utils
 import backend.server.routers.postmark.postmark
 import backend.server.routers.v1
+import backend.server.routers.openai_proxy
 import backend.server.v2.admin.credit_admin_routes
 import backend.server.v2.admin.store_admin_routes
 import backend.server.v2.builder
@@ -252,6 +253,13 @@ app.include_router(
     backend.server.routers.postmark.postmark.router,
     tags=["v1", "email"],
     prefix="/api/email",
+)
+
+# Add OpenAI-compatible chat proxy router
+app.include_router(
+    backend.server.routers.openai_proxy.router,
+    tags=["openai-proxy"],
+    prefix="/api",
 )
 
 app.mount("/external-api", external_app)
