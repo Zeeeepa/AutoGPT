@@ -22,6 +22,7 @@ import backend.integrations.webhooks.utils
 import backend.server.routers.postmark.postmark
 import backend.server.routers.v1
 import backend.server.routers.openai_proxy
+import backend.server.routers.provider_management
 import backend.server.v2.admin.credit_admin_routes
 import backend.server.v2.admin.store_admin_routes
 import backend.server.v2.builder
@@ -83,6 +84,17 @@ async def lifespan_context(app: fastapi.FastAPI):
     await backend.data.graph.migrate_llm_models(LlmModel.GPT4O)
     await backend.integrations.webhooks.utils.migrate_legacy_triggered_graphs()
 
+    # Initialize provider management system
+    try:
+        await backend.server.routers.provider_management.initialize_provider_management()
+        
+        # Set scaling engine reference in OpenAI proxy
+        backend.server.routers.openai_proxy.scaling_engine = backend.server.routers.provider_management.scaling_engine
+        
+        logger.info("Provider management system initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize provider management: {e}")
+
     with launch_darkly_context():
         yield
 
@@ -90,6 +102,13 @@ async def lifespan_context(app: fastapi.FastAPI):
         await shutdown_cloud_storage_handler()
     except Exception as e:
         logger.warning(f"Error shutting down cloud storage handler: {e}")
+
+    # Shutdown provider management system
+    try:
+        await backend.server.routers.provider_management.shutdown_provider_management()
+        logger.info("Provider management system shutdown")
+    except Exception as e:
+        logger.warning(f"Error shutting down provider management: {e}")
 
     await backend.data.db.disconnect()
 
@@ -260,6 +279,13 @@ app.include_router(
     backend.server.routers.openai_proxy.router,
     tags=["openai-proxy"],
     prefix="/api",
+)
+
+# Add Provider Management router
+app.include_router(
+    backend.server.routers.provider_management.router,
+    tags=["provider-management"],
+    prefix="/api/provider-management",
 )
 
 app.mount("/external-api", external_app)

@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/v1", tags=["openai-proxy"])
 
+# Global reference to scaling engine (will be set during startup)
+scaling_engine = None
+
 
 # OpenAI-compatible request/response models
 class ChatMessage(BaseModel):
@@ -316,6 +319,32 @@ async def chat_completions(
         # Map model to service
         service_type = await get_chat_service_from_model(request.model)
         
+        logger.info(f"Processing chat completion for {service_type} with model {request.model}")
+        
+        # Use smart scaling engine if available, otherwise fallback to load balancer
+        if scaling_engine:
+            # Convert request to dict format for scaling engine
+            request_data = {
+                "model": request.model,
+                "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
+                "temperature": request.temperature,
+                "max_tokens": request.max_tokens,
+                "stream": request.stream
+            }
+            
+            try:
+                # Handle request through scaling engine
+                response = await scaling_engine.handle_request(service_type, request_data)
+                
+                # Return the OpenAI-formatted response directly
+                return response
+                
+            except Exception as e:
+                logger.error(f"Scaling engine error: {e}")
+                # Fallback to traditional method
+                pass
+        
+        # Fallback to traditional load balancer method
         # Get account for service
         account = await get_account_for_service(service_type)
         if not account:
@@ -336,8 +365,6 @@ async def chat_completions(
                 status_code=400,
                 detail="No user message found in request"
             )
-            
-        logger.info(f"Processing chat completion for {service_type} with model {request.model}")
         
         # Handle streaming vs non-streaming
         if request.stream:
