@@ -1,0 +1,177 @@
+{
+  "test_summary": {
+    "total_tests": 16,
+    "passed_tests": 3,
+    "failed_tests": 13,
+    "success_rate": 18.75,
+    "test_duration": 0.02542591094970703
+  },
+  "test_results": {
+    "routing_tests": [
+      {
+        "model": "z.ai",
+        "description": "Z.AI exact match",
+        "expected_type": "exact_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "model": "k2",
+        "description": "K2Think exact match",
+        "expected_type": "exact_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "model": "qwen",
+        "description": "Qwen exact match",
+        "expected_type": "exact_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "model": "custom-chat",
+        "description": "Custom chat partial match",
+        "expected_type": "partial_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "model": "unknown-model",
+        "description": "Unknown model fallback",
+        "expected_type": "default_fallback",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "model": "gpt-4.1",
+        "description": "GPT-4.1 fallback",
+        "expected_type": "default_fallback",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      }
+    ],
+    "load_balance_tests": [
+      {
+        "total_requests": 50,
+        "successful_requests": 50,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "provider_usage": {
+          "provider-z.ai": 10,
+          "provider-k2": 10,
+          "provider-qwen": 10,
+          "provider-custom": 10,
+          "provider-default": 10
+        },
+        "balance_coefficient": 0.0,
+        "load_balanced": true
+      }
+    ],
+    "performance_tests": [
+      {
+        "name": "Light Load",
+        "total_requests": 20,
+        "successful_requests": 20,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "throughput": 8473.341414141414,
+        "duration": 0.0023603439331054688,
+        "success": true
+      },
+      {
+        "name": "Medium Load",
+        "total_requests": 50,
+        "successful_requests": 50,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "throughput": 12158.107716389355,
+        "duration": 0.0041124820709228516,
+        "success": true
+      },
+      {
+        "name": "Heavy Load",
+        "total_requests": 100,
+        "successful_requests": 100,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "throughput": 10512.83053863699,
+        "duration": 0.009512186050415039,
+        "success": true
+      }
+    ],
+    "failover_tests": [],
+    "provider_management_tests": [
+      {
+        "endpoint": "/api/dynamic-providers/providers",
+        "method": "GET",
+        "description": "List all providers",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "endpoint": "/api/dynamic-providers/system/config",
+        "method": "GET",
+        "description": "Get system configuration",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "endpoint": "/api/dynamic-providers/models/mappings",
+        "method": "GET",
+        "description": "Get model mappings",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "endpoint": "/v1/health",
+        "method": "GET",
+        "description": "Health check endpoint",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "endpoint": "/v1/models",
+        "method": "GET",
+        "description": "Get available models",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      },
+      {
+        "endpoint": "/v1/stats",
+        "method": "GET",
+        "description": "Get system statistics",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "MockTestClient.post.<locals>.MockResponse.__init__.<locals>.<lambda>() takes 0 positional arguments but 1 was given"
+      }
+    ]
+  },
+  "recommendations": [
+    "Fix 6 routing test failures - check model mapping configuration"
+  ],
+  "generated_at": "2025-09-29T22:03:44.707476"
+}
