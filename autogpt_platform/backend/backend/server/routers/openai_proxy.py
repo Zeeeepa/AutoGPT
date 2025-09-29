@@ -86,8 +86,8 @@ class ChatCompletionStreamResponse(BaseModel):
     choices: List[ChatCompletionStreamChoice] = Field(..., description="Stream choices")
 
 
-# Model mapping to chat services
-MODEL_SERVICE_MAPPING = {
+# Legacy model mapping to chat services (for backward compatibility)
+LEGACY_MODEL_SERVICE_MAPPING = {
     "gpt-3.5-turbo": ChatServiceType.ZAI,
     "gpt-4": ChatServiceType.ZAI,
     "gpt-4-turbo": ChatServiceType.ZAI,
@@ -102,6 +102,9 @@ MODEL_SERVICE_MAPPING = {
     "grok-beta": ChatServiceType.GROK,
     "grok-2": ChatServiceType.GROK,
 }
+
+# Dynamic provider manager (will be set during startup)
+dynamic_provider_manager = None
 
 # Default accounts configuration (in production, this would come from database)
 DEFAULT_ACCOUNTS = {
@@ -153,9 +156,67 @@ DEFAULT_ACCOUNTS = {
 }
 
 
-async def get_chat_service_from_model(model: str) -> ChatServiceType:
-    """Map OpenAI model name to chat service type"""
-    service_type = MODEL_SERVICE_MAPPING.get(model)
+async def get_chat_service_from_model(model: str) -> Optional[str]:
+    """
+    Map OpenAI model name to provider ID using dynamic routing.
+    
+    Returns:
+        Provider ID if found, None if should use default provider
+    """
+    # First try dynamic provider manager
+    if dynamic_provider_manager:
+        # Check for exact model mapping
+        mapping = dynamic_provider_manager.system_config.get_model_mapping(model)
+        if mapping:
+            provider = dynamic_provider_manager.providers.get(mapping.provider_id)
+            if provider and provider.is_enabled and provider.is_healthy():
+                logger.info(f"Routing model '{model}' to dynamic provider '{provider.name}'")
+                return mapping.provider_id
+        
+        # Check for provider name match (e.g., model="z.ai" -> Z.AI provider)
+        for provider_id, provider in dynamic_provider_manager.providers.items():
+            if not provider.is_enabled or not provider.is_healthy():
+                continue
+                
+            # Check if model name matches provider name variations
+            provider_names = [
+                provider.name.lower(),
+                provider.name.lower().replace(' ', ''),
+                provider.name.lower().replace(' ', '-'),
+                provider.name.lower().replace(' ', '.'),
+            ]
+            
+            if model.lower() in provider_names:
+                logger.info(f"Routing model '{model}' to provider '{provider.name}' by name match")
+                return provider_id
+        
+        # Check for partial matches in supported models
+        for provider_id, provider in dynamic_provider_manager.providers.items():
+            if not provider.is_enabled or not provider.is_healthy():
+                continue
+                
+            for supported_model in provider.supported_models:
+                if (model.lower() in supported_model.lower() or 
+                    supported_model.lower() in model.lower()):
+                    logger.info(f"Routing model '{model}' to provider '{provider.name}' by partial match")
+                    return provider_id
+        
+        # Use default provider if configured
+        if dynamic_provider_manager.system_config.default_provider_id:
+            default_provider = dynamic_provider_manager.providers.get(
+                dynamic_provider_manager.system_config.default_provider_id
+            )
+            if default_provider and default_provider.is_enabled and default_provider.is_healthy():
+                logger.info(f"Routing model '{model}' to default provider '{default_provider.name}'")
+                return dynamic_provider_manager.system_config.default_provider_id
+    
+    # Fallback to legacy mapping for backward compatibility
+    return None
+
+
+async def get_legacy_chat_service_from_model(model: str) -> ChatServiceType:
+    """Legacy model mapping for backward compatibility"""
+    service_type = LEGACY_MODEL_SERVICE_MAPPING.get(model)
     if not service_type:
         # Default to Z.AI for unknown models
         service_type = ChatServiceType.ZAI
