@@ -20,6 +20,7 @@ from backend.data.chat_proxy_models import (
     DEFAULT_SERVICE_CONFIGS,
 )
 from backend.util.load_balancer import load_balancer
+from backend.util.flareprox_integration import get_proxied_url
 from backend.sdk import (
     APIKeyCredentials,
     Block,
@@ -83,6 +84,12 @@ class ChatProxyLoginBlock(Block):
             default=60
         )
         
+        # FlareProx integration
+        use_flareprox: bool = SchemaField(
+            description="Use FlareProx for IP rotation",
+            default=True
+        )
+        
     class Output(BlockSchema):
         success: bool = SchemaField(description="Whether login was successful")
         session_id: str = SchemaField(description="Browser session ID for reuse")
@@ -124,9 +131,18 @@ class ChatProxyLoginBlock(Block):
             if not page:
                 raise RuntimeError("Failed to initialize Stagehand browser page")
                 
-            # Navigate to login page
-            logger.info(f"Navigating to login page: {service_config.login_url}")
-            await page.goto(service_config.login_url)
+            # Navigate to login page (with optional FlareProx)
+            login_url = service_config.login_url
+            if input_data.use_flareprox:
+                try:
+                    login_url = await get_proxied_url(service_config.login_url, use_random=True)
+                    logger.info(f"Using FlareProx for login: {login_url}")
+                except Exception as e:
+                    logger.warning(f"FlareProx failed, using direct URL: {e}")
+                    login_url = service_config.login_url
+            
+            logger.info(f"Navigating to login page: {login_url}")
+            await page.goto(login_url)
             
             # Wait for page to load
             await page.wait_for_load_state("networkidle")
@@ -262,6 +278,12 @@ class ChatProxySendMessageBlock(Block):
             default=120
         )
         
+        # FlareProx integration
+        use_flareprox: bool = SchemaField(
+            description="Use FlareProx for IP rotation",
+            default=True
+        )
+        
     class Output(BlockSchema):
         success: bool = SchemaField(description="Whether message was sent and response received")
         response: str = SchemaField(description="AI response from the chat service", default="")
@@ -303,11 +325,20 @@ class ChatProxySendMessageBlock(Block):
             if not page:
                 raise RuntimeError("Failed to initialize Stagehand browser page")
                 
-            # Navigate to chat page if not already there
+            # Navigate to chat page if not already there (with optional FlareProx)
             current_url = page.url
             if service_config.chat_url not in current_url:
-                logger.info(f"Navigating to chat page: {service_config.chat_url}")
-                await page.goto(service_config.chat_url)
+                chat_url = service_config.chat_url
+                if input_data.use_flareprox:
+                    try:
+                        chat_url = await get_proxied_url(service_config.chat_url, use_random=True)
+                        logger.info(f"Using FlareProx for chat: {chat_url}")
+                    except Exception as e:
+                        logger.warning(f"FlareProx failed, using direct URL: {e}")
+                        chat_url = service_config.chat_url
+                
+                logger.info(f"Navigating to chat page: {chat_url}")
+                await page.goto(chat_url)
                 await page.wait_for_load_state("networkidle")
                 
             # Use AI to find message input field and type message
@@ -443,6 +474,12 @@ class ChatProxyHealthCheckBlock(Block):
             default="claude-3-5-sonnet-20241022"
         )
         
+        # FlareProx integration
+        use_flareprox: bool = SchemaField(
+            description="Use FlareProx for IP rotation",
+            default=True
+        )
+        
     class Output(BlockSchema):
         healthy: bool = SchemaField(description="Whether the account/session is healthy")
         status_message: str = SchemaField(description="Health status description", default="")
@@ -484,9 +521,18 @@ class ChatProxyHealthCheckBlock(Block):
             if not page:
                 raise RuntimeError("Failed to initialize Stagehand browser page")
                 
-            # Navigate to chat page
-            logger.info(f"Navigating to chat page: {service_config.chat_url}")
-            await page.goto(service_config.chat_url)
+            # Navigate to chat page (with optional FlareProx)
+            chat_url = service_config.chat_url
+            if input_data.use_flareprox:
+                try:
+                    chat_url = await get_proxied_url(service_config.chat_url, use_random=True)
+                    logger.info(f"Using FlareProx for health check: {chat_url}")
+                except Exception as e:
+                    logger.warning(f"FlareProx failed, using direct URL: {e}")
+                    chat_url = service_config.chat_url
+            
+            logger.info(f"Navigating to chat page: {chat_url}")
+            await page.goto(chat_url)
             await page.wait_for_load_state("networkidle")
             
             # Use AI to check if we're logged in and can access chat

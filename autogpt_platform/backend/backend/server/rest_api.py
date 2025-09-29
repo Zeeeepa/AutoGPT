@@ -94,6 +94,17 @@ async def lifespan_context(app: fastapi.FastAPI):
         logger.info("Provider management system initialized")
     except Exception as e:
         logger.error(f"Failed to initialize provider management: {e}")
+    
+    # Initialize FlareProx system
+    try:
+        from backend.util.flareprox_integration import initialize_flareprox
+        flareprox_initialized = await initialize_flareprox()
+        if flareprox_initialized:
+            logger.info("FlareProx system initialized successfully")
+        else:
+            logger.warning("FlareProx system failed to initialize - continuing without IP rotation")
+    except Exception as e:
+        logger.warning(f"FlareProx initialization error: {e} - continuing without IP rotation")
 
     with launch_darkly_context():
         yield

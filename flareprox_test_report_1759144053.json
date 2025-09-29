@@ -1,0 +1,341 @@
+{
+  "test_summary": {
+    "timestamp": "2025-09-29 11:07:33",
+    "flareprox_initialized": true,
+    "total_endpoint_tests": 23,
+    "successful_endpoint_tests": 22,
+    "total_load_tests": 0,
+    "successful_load_tests": 0
+  },
+  "detailed_results": {
+    "flareprox_status": {
+      "initialized": true,
+      "endpoints": {
+        "total_endpoints": 3,
+        "working_endpoints": 0,
+        "failed_endpoints": 3,
+        "endpoint_details": [
+          {
+            "name": "flareprox-endpoint-1",
+            "url": "https://flareprox-1759143985-0.mock-flareprox.workers.dev",
+            "status": "failed",
+            "created_at": "2025-09-29 11:06:25"
+          },
+          {
+            "name": "flareprox-endpoint-2",
+            "url": "https://flareprox-1759143985-0.mock-flareprox.workers.dev",
+            "status": "failed",
+            "created_at": "2025-09-29 11:06:25"
+          },
+          {
+            "name": "flareprox-endpoint-3",
+            "url": "https://flareprox-1759143985-0.mock-flareprox.workers.dev",
+            "status": "failed",
+            "created_at": "2025-09-29 11:06:25"
+          }
+        ]
+      }
+    },
+    "endpoint_tests": {
+      "health": {
+        "status_code": 200,
+        "response_time": 0.0028069019317626953,
+        "success": true,
+        "content_length": 51
+      },
+      "models": {
+        "status_code": 200,
+        "response_time": 0.0014536380767822266,
+        "success": true,
+        "content_length": 308
+      },
+      "stats": {
+        "status_code": 200,
+        "response_time": 0.0012960433959960938,
+        "success": true,
+        "content_length": 104
+      },
+      "chat_completions": {
+        "status_code": 405,
+        "response_time": 0.0012750625610351562,
+        "success": false,
+        "content_length": 31
+      },
+      "zai_test_1": {
+        "model": "gpt-3.5-turbo",
+        "service": "zai",
+        "status_code": 200,
+        "response_time": 0.020235538482666016,
+        "success": true,
+        "response_length": 114,
+        "usage": {
+          "prompt_tokens": 52,
+          "completion_tokens": 114,
+          "total_tokens": 166
+        }
+      },
+      "zai_test_2": {
+        "model": "gpt-3.5-turbo",
+        "service": "zai",
+        "status_code": 200,
+        "response_time": 0.004213571548461914,
+        "success": true,
+        "response_length": 107,
+        "usage": {
+          "prompt_tokens": 97,
+          "completion_tokens": 107,
+          "total_tokens": 204
+        }
+      },
+      "zai_test_3": {
+        "model": "gpt-3.5-turbo",
+        "service": "zai",
+        "status_code": 200,
+        "response_time": 0.004395723342895508,
+        "success": true,
+        "response_length": 116,
+        "usage": {
+          "prompt_tokens": 151,
+          "completion_tokens": 116,
+          "total_tokens": 267
+        }
+      },
+      "qwen_test_1": {
+        "model": "qwen-max",
+        "service": "qwen",
+        "status_code": 200,
+        "response_time": 0.004120349884033203,
+        "success": true,
+        "response_length": 117,
+        "usage": {
+          "prompt_tokens": 52,
+          "completion_tokens": 117,
+          "total_tokens": 169
+        }
+      },
+      "qwen_test_2": {
+        "model": "qwen-max",
+        "service": "qwen",
+        "status_code": 200,
+        "response_time": 0.00395512580871582,
+        "success": true,
+        "response_length": 110,
+        "usage": {
+          "prompt_tokens": 97,
+          "completion_tokens": 110,
+          "total_tokens": 207
+        }
+      },
+      "qwen_test_3": {
+        "model": "qwen-max",
+        "service": "qwen",
+        "status_code": 200,
+        "response_time": 0.004240989685058594,
+        "success": true,
+        "response_length": 119,
+        "usage": {
+          "prompt_tokens": 151,
+          "completion_tokens": 119,
+          "total_tokens": 270
+        }
+      },
+      "deepseek_test_1": {
+        "model": "deepseek-chat",
+        "service": "deepseek",
+        "status_code": 200,
+        "response_time": 0.004007577896118164,
+        "success": true,
+        "response_length": 118,
+        "usage": {
+          "prompt_tokens": 52,
+          "completion_tokens": 118,
+          "total_tokens": 170
+        }
+      },
+      "deepseek_test_2": {
+        "model": "deepseek-chat",
+        "service": "deepseek",
+        "status_code": 200,
+        "response_time": 0.004123210906982422,
+        "success": true,
+        "response_length": 111,
+        "usage": {
+          "prompt_tokens": 97,
+          "completion_tokens": 111,
+          "total_tokens": 208
+        }
+      },
+      "deepseek_test_3": {
+        "model": "deepseek-chat",
+        "service": "deepseek",
+        "status_code": 200,
+        "response_time": 0.007683992385864258,
+        "success": true,
+        "response_length": 120,
+        "usage": {
+          "prompt_tokens": 151,
+          "completion_tokens": 120,
+          "total_tokens": 271
+        }
+      },
+      "grok_test_1": {
+        "model": "grok-beta",
+        "service": "grok",
+        "status_code": 200,
+        "response_time": 0.0041255950927734375,
+        "success": true,
+        "response_length": 114,
+        "usage": {
+          "prompt_tokens": 52,
+          "completion_tokens": 114,
+          "total_tokens": 166
+        }
+      },
+      "grok_test_2": {
+        "model": "grok-beta",
+        "service": "grok",
+        "status_code": 200,
+        "response_time": 0.003850698471069336,
+        "success": true,
+        "response_length": 107,
+        "usage": {
+          "prompt_tokens": 97,
+          "completion_tokens": 107,
+          "total_tokens": 204
+        }
+      },
+      "grok_test_3": {
+        "model": "grok-beta",
+        "service": "grok",
+        "status_code": 200,
+        "response_time": 0.003821134567260742,
+        "success": true,
+        "response_length": 116,
+        "usage": {
+          "prompt_tokens": 151,
+          "completion_tokens": 116,
+          "total_tokens": 267
+        }
+      },
+      "k2think_test_1": {
+        "model": "k2-think",
+        "service": "k2think",
+        "status_code": 200,
+        "response_time": 0.004503011703491211,
+        "success": true,
+        "response_length": 120,
+        "usage": {
+          "prompt_tokens": 52,
+          "completion_tokens": 120,
+          "total_tokens": 172
+        }
+      },
+      "k2think_test_2": {
+        "model": "k2-think",
+        "service": "k2think",
+        "status_code": 200,
+        "response_time": 0.00399017333984375,
+        "success": true,
+        "response_length": 113,
+        "usage": {
+          "prompt_tokens": 97,
+          "completion_tokens": 113,
+          "total_tokens": 210
+        }
+      },
+      "k2think_test_3": {
+        "model": "k2-think",
+        "service": "k2think",
+        "status_code": 200,
+        "response_time": 0.004250526428222656,
+        "success": true,
+        "response_length": 122,
+        "usage": {
+          "prompt_tokens": 151,
+          "completion_tokens": 122,
+          "total_tokens": 273
+        }
+      },
+      "performance_length_10": {
+        "message_length": 10,
+        "response_time": 0.0029571056365966797,
+        "status_code": 200,
+        "success": true
+      },
+      "performance_length_100": {
+        "message_length": 100,
+        "response_time": 0.003962278366088867,
+        "status_code": 200,
+        "success": true
+      },
+      "performance_length_500": {
+        "message_length": 500,
+        "response_time": 0.003998517990112305,
+        "status_code": 200,
+        "success": true
+      },
+      "performance_length_1000": {
+        "message_length": 1000,
+        "response_time": 0.005136966705322266,
+        "status_code": 200,
+        "success": true
+      }
+    },
+    "load_tests": {},
+    "scalability_tests": {
+      "concurrent_1": {
+        "total_requests": 1,
+        "successful_requests": 1,
+        "failed_requests": 0,
+        "success_rate": 1.0,
+        "total_time": 0.0047528743743896484,
+        "avg_response_time": 0.004672527313232422,
+        "requests_per_second": 210.39899673940306
+      },
+      "concurrent_5": {
+        "total_requests": 5,
+        "successful_requests": 5,
+        "failed_requests": 0,
+        "success_rate": 1.0,
+        "total_time": 0.01316213607788086,
+        "avg_response_time": 0.011666536331176758,
+        "requests_per_second": 379.87754954171646
+      },
+      "concurrent_10": {
+        "total_requests": 10,
+        "successful_requests": 10,
+        "failed_requests": 0,
+        "success_rate": 1.0,
+        "total_time": 0.028339624404907227,
+        "avg_response_time": 0.023248863220214844,
+        "requests_per_second": 352.8628275775039
+      },
+      "concurrent_20": {
+        "total_requests": 20,
+        "successful_requests": 20,
+        "failed_requests": 0,
+        "success_rate": 1.0,
+        "total_time": 0.042768239974975586,
+        "avg_response_time": 0.03658822774887085,
+        "requests_per_second": 467.6367325777805
+      }
+    },
+    "error_analysis": {
+      "invalid_model": {
+        "status_code": 200,
+        "response": "{\"id\":\"chatcmpl-1759144045\",\"object\":\"chat.completion\",\"created\":1759144045,\"model\":\"invalid-model-name\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Hello! This is a mock response from Unknown. You said: 'test' [Routed through FlareProx IP: 127.0.0.1]\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":37,\"completion_tokens\":102,\"total_tokens\":139},\"flareprox_used\":true,\"ip_address\":\"127.0.0.1\"}",
+        "handled_gracefully": false
+      },
+      "empty_messages": {
+        "status_code": 400,
+        "response": "{\"detail\":\"Messages cannot be empty\"}",
+        "handled_gracefully": true
+      },
+      "invalid_message_format": {
+        "status_code": 200,
+        "response": "{\"id\":\"chatcmpl-1759144045\",\"object\":\"chat.completion\",\"created\":1759144045,\"model\":\"gpt-3.5-turbo\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Hello! This is a mock response from Z.AI. You said: '' [Routed through FlareProx IP: 127.0.0.1]\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":23,\"completion_tokens\":95,\"total_tokens\":118},\"flareprox_used\":true,\"ip_address\":\"127.0.0.1\"}",
+        "handled_gracefully": false
+      }
+    }
+  }
+}
