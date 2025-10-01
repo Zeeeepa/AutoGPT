@@ -189,11 +189,11 @@ async def get_chat_service_from_model(model: str) -> Tuple[Optional[str], Option
                 logger.info(f"Routing model '{model}' to YAML provider '{provider.name}' by name match")
                 return provider_id, 'yaml'
         
-        # Check if model should use default YAML provider
+        # If no exact match found, use default YAML provider for unknown models
         default_provider = yaml_loader.get_default_provider()
-        if default_provider and model.lower() in ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo']:
+        if default_provider:
             provider_id = yaml_loader._generate_provider_id(default_provider.name)
-            logger.info(f"Routing standard model '{model}' to default YAML provider '{default_provider.name}'")
+            logger.info(f"Routing unknown model '{model}' to default YAML provider '{default_provider.name}'")
             return provider_id, 'yaml'
             
     except Exception as e:
