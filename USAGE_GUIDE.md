@@ -23,12 +23,15 @@ export BROWSERBASE_PROJECT_ID="your-browserbase-project-id"
 ```
 
 3. **Configure Service Credentials**
-The credentials are already configured in the code:
-- **K2Think.AI**: developer@pixelium.uk / developer123?
-- **Qwen.AI**: developer@pixelium.uk / developer1?
-- **DeepSeek**: zeeeepa+1@gmail.com / developer123??
-- **Grok**: developer@pixelium.uk / developer123??
-- **Z.AI**: developer@pixelium.uk / developer123?
+You need to configure your own credentials for each service. Copy the `.env.chat_proxy.default` file to `.env.chat_proxy` and update with your credentials:
+
+- **K2Think.AI**: Set `K2THINK_EMAIL` and `K2THINK_PASSWORD` in your environment
+- **Qwen.AI**: Set `QWEN_EMAIL` and `QWEN_PASSWORD` in your environment  
+- **DeepSeek**: Set `DEEPSEEK_EMAIL` and `DEEPSEEK_PASSWORD` in your environment
+- **Grok**: Set `GROK_EMAIL` and `GROK_PASSWORD` in your environment
+- **Z.AI**: Set `ZAI_EMAIL` and `ZAI_PASSWORD` in your environment
+
+**Security Note**: Never commit real credentials to version control. Use environment variables or secure credential management systems.
 
 ## 🧪 Testing Process
 

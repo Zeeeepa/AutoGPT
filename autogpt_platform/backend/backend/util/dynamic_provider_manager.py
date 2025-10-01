@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import time
+import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from urllib.parse import urlparse
@@ -623,3 +624,380 @@ class DynamicProviderManager:
         except Exception as e:
             logger.error(f"Failed to remove provider {provider_id}: {e}")
             return False
+
+    async def _health_check_monitor(self):
+        """Background task to monitor provider health."""
+        while True:
+            try:
+                await asyncio.sleep(60)  # Check every minute
+                
+                for provider_id, provider in self.providers.items():
+                    if not provider.is_enabled:
+                        continue
+                    
+                    try:
+                        # Perform health check
+                        is_healthy = await self._check_provider_health(provider_id)
+                        
+                        if is_healthy:
+                            provider.status = ProviderStatus.ACTIVE
+                            provider.metrics.consecutive_failures = 0
+                            provider.metrics.last_success_time = datetime.now()
+                        else:
+                            provider.metrics.consecutive_failures += 1
+                            
+                            # Update status based on failure count
+                            if provider.metrics.consecutive_failures >= 3:
+                                provider.status = ProviderStatus.ERROR
+                                logger.warning(f"Provider {provider.name} marked as ERROR after {provider.metrics.consecutive_failures} consecutive failures")
+                            elif provider.metrics.consecutive_failures >= 1:
+                                provider.status = ProviderStatus.DEGRADED
+                    
+                    except Exception as e:
+                        logger.error(f"Health check failed for provider {provider.name}: {e}")
+                        provider.metrics.consecutive_failures += 1
+                        provider.status = ProviderStatus.ERROR
+                
+            except Exception as e:
+                logger.error(f"Health check monitor error: {e}")
+
+    async def _session_cleanup_monitor(self):
+        """Background task to cleanup expired sessions."""
+        while True:
+            try:
+                await asyncio.sleep(3600)  # Check every hour
+                
+                current_time = datetime.now()
+                
+                for provider in self.providers.values():
+                    if not provider.session_data:
+                        continue
+                    
+                    # Check if session is expired (24 hours default)
+                    session_age = current_time - provider.session_data.created_at
+                    if session_age > timedelta(hours=24):
+                        logger.info(f"Cleaning up expired session for provider {provider.name}")
+                        provider.session_data = None
+                        provider.status = ProviderStatus.INACTIVE
+                    
+                    # Check if session is marked as invalid
+                    elif not provider.session_data.is_valid:
+                        logger.info(f"Cleaning up invalid session for provider {provider.name}")
+                        provider.session_data = None
+                        provider.status = ProviderStatus.INACTIVE
+                
+            except Exception as e:
+                logger.error(f"Session cleanup monitor error: {e}")
+
+    async def _load_existing_providers(self):
+        """Load existing providers from persistent storage."""
+        try:
+            # In a production system, this would load from database
+            # For now, we'll create some default providers if none exist
+            
+            if not self.providers:
+                logger.info("No existing providers found, initializing with default configuration")
+                
+                # This would typically load from database or configuration file
+                # For demo purposes, we'll leave this empty and let providers be added dynamically
+                pass
+            else:
+                logger.info(f"Loaded {len(self.providers)} existing providers")
+                
+                # Restore sessions for existing providers
+                for provider in self.providers.values():
+                    try:
+                        # Try to load saved cookies
+                        cookies_loaded = await self.cookie_manager.load_cookies(provider)
+                        if cookies_loaded:
+                            logger.info(f"Restored session for provider {provider.name}")
+                        else:
+                            # Mark for re-authentication if auto-authenticate is enabled
+                            if self.system_config.auto_authenticate:
+                                asyncio.create_task(self._authenticate_provider_async(provider.id))
+                    except Exception as e:
+                        logger.warning(f"Failed to restore session for provider {provider.name}: {e}")
+                
+        except Exception as e:
+            logger.error(f"Failed to load existing providers: {e}")
+
+    async def _check_provider_health(self, provider_id: str) -> bool:
+        """Check if a provider is healthy and responsive."""
+        try:
+            provider = self.providers.get(provider_id)
+            if not provider:
+                return False
+            
+            # Use circuit breaker to check health
+            circuit_breaker = self.circuit_breakers.get(provider_id)
+            if circuit_breaker and circuit_breaker.is_open():
+                return False
+            
+            # Check if provider has valid session
+            if not provider.session_data or not provider.session_data.is_valid:
+                return False
+            
+            # Check if provider is enabled
+            if not provider.is_enabled:
+                return False
+            
+            # Check recent error rate
+            if provider.metrics.consecutive_failures >= 5:
+                return False
+            
+            # Check success rate
+            if (provider.metrics.total_requests > 10 and 
+                provider.metrics.calculate_success_rate() < 0.5):
+                return False
+            
+            # Additional health checks could be added here
+            # For example, making a test request to the provider
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Health check failed for provider {provider_id}: {e}")
+            return False
+
+    async def _authenticate_provider_async(self, provider_id: str):
+        """Asynchronously authenticate a provider."""
+        try:
+            provider = self.providers.get(provider_id)
+            if not provider:
+                logger.error(f"Provider {provider_id} not found for authentication")
+                return
+            
+            logger.info(f"Starting async authentication for provider {provider.name}")
+            
+            # This would typically get a browser instance from the browser manager
+            # For now, we'll simulate the authentication process
+            
+            # Mark provider as authenticating
+            provider.status = ProviderStatus.AUTHENTICATING
+            
+            # Simulate authentication delay
+            await asyncio.sleep(2)
+            
+            # Use the authenticator to perform authentication
+            # In a real implementation, this would use a browser instance
+            success = await self._simulate_authentication(provider)
+            
+            if success:
+                provider.status = ProviderStatus.ACTIVE
+                provider.metrics.last_success_time = datetime.now()
+                provider.metrics.consecutive_failures = 0
+                logger.info(f"Successfully authenticated provider {provider.name}")
+            else:
+                provider.status = ProviderStatus.AUTH_FAILED
+                provider.metrics.consecutive_failures += 1
+                logger.error(f"Authentication failed for provider {provider.name}")
+            
+        except Exception as e:
+            logger.error(f"Async authentication failed for provider {provider_id}: {e}")
+            if provider_id in self.providers:
+                self.providers[provider_id].status = ProviderStatus.ERROR
+
+    async def _simulate_authentication(self, provider: DynamicProvider) -> bool:
+        """Simulate authentication process for a provider."""
+        try:
+            # This is a simplified simulation
+            # In a real implementation, this would use the StagehandAuthenticator
+            # with an actual browser instance
+            
+            # Check if provider has authentication configuration
+            if not provider.auth_config or not provider.auth_config.email:
+                logger.warning(f"Provider {provider.name} has no authentication configuration")
+                return False
+            
+            # Simulate authentication success/failure based on configuration
+            # In reality, this would attempt to log in to the actual service
+            
+            # Create mock session data
+            provider.session_data = SessionData(
+                session_id=f"sim_{provider.id}_{int(time.time())}",
+                cookies=[],
+                local_storage={},
+                session_storage={},
+                created_at=datetime.now(),
+                last_used=datetime.now(),
+                is_valid=True
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Simulated authentication failed for provider {provider.name}: {e}")
+            return False
+
+    async def authenticate_provider(self, provider_id: str, browser_instance=None) -> Tuple[bool, Optional[str]]:
+        """Authenticate a provider using browser automation."""
+        try:
+            provider = self.providers.get(provider_id)
+            if not provider:
+                return False, f"Provider {provider_id} not found"
+            
+            if not browser_instance:
+                return False, "Browser instance is required for authentication"
+            
+            # Use the authenticator to perform authentication
+            success, error_message = await self.authenticator.authenticate_provider(provider, browser_instance)
+            
+            if success:
+                provider.status = ProviderStatus.ACTIVE
+                provider.metrics.last_success_time = datetime.now()
+                provider.metrics.consecutive_failures = 0
+                
+                # Save cookies
+                await self.cookie_manager.save_cookies(provider)
+                
+                logger.info(f"Successfully authenticated provider {provider.name}")
+            else:
+                provider.status = ProviderStatus.AUTH_FAILED
+                provider.metrics.consecutive_failures += 1
+                logger.error(f"Authentication failed for provider {provider.name}: {error_message}")
+            
+            return success, error_message
+            
+        except Exception as e:
+            error_message = f"Authentication error for provider {provider_id}: {str(e)}"
+            logger.error(error_message)
+            
+            if provider_id in self.providers:
+                self.providers[provider_id].status = ProviderStatus.ERROR
+                self.providers[provider_id].metrics.consecutive_failures += 1
+            
+            return False, error_message
+
+    async def get_provider_for_model(self, model_name: str) -> Optional[DynamicProvider]:
+        """Get the best available provider for a specific model."""
+        try:
+            # Find providers that support this model
+            matching_providers = []
+            
+            for provider in self.providers.values():
+                if (provider.is_enabled and 
+                    provider.status == ProviderStatus.ACTIVE and
+                    model_name in provider.supported_models):
+                    matching_providers.append(provider)
+            
+            if not matching_providers:
+                return None
+            
+            # Use load balancer to select best provider
+            provider_ids = [p.id for p in matching_providers]
+            selected_id = await self.load_balancer.select_server(provider_ids)
+            
+            return next((p for p in matching_providers if p.id == selected_id), None)
+            
+        except Exception as e:
+            logger.error(f"Failed to get provider for model {model_name}: {e}")
+            return None
+
+    async def execute_request(self, provider_id: str, request_data: dict, browser_instance=None) -> dict:
+        """Execute a request using a specific provider."""
+        try:
+            provider = self.providers.get(provider_id)
+            if not provider:
+                raise Exception(f"Provider {provider_id} not found")
+            
+            if not provider.is_enabled or provider.status != ProviderStatus.ACTIVE:
+                raise Exception(f"Provider {provider.name} is not available")
+            
+            # Use circuit breaker
+            circuit_breaker = self.circuit_breakers.get(provider_id)
+            if circuit_breaker and circuit_breaker.is_open():
+                raise Exception(f"Provider {provider.name} circuit breaker is open")
+            
+            start_time = time.time()
+            
+            try:
+                # Update metrics
+                provider.metrics.total_requests += 1
+                provider.metrics.last_request_time = datetime.now()
+                
+                # Restore session if needed
+                if browser_instance and provider.session_data:
+                    await self.cookie_manager.restore_cookies_to_browser(provider, browser_instance)
+                
+                # Execute the actual request (simplified)
+                # In a real implementation, this would interact with the browser instance
+                # to navigate to the provider's chat interface and send the message
+                
+                response_data = {
+                    "id": f"req-{uuid.uuid4().hex[:8]}",
+                    "provider": provider.name,
+                    "model": request_data.get("model", "unknown"),
+                    "response": f"Response from {provider.name}",
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                # Update success metrics
+                response_time = time.time() - start_time
+                provider.metrics.response_times.append(response_time)
+                provider.metrics.last_success_time = datetime.now()
+                
+                # Reset consecutive failures on success
+                provider.metrics.consecutive_failures = 0
+                
+                return response_data
+                
+            except Exception as e:
+                # Update error metrics
+                provider.metrics.error_count += 1
+                provider.metrics.consecutive_failures += 1
+                
+                # Update circuit breaker
+                if circuit_breaker:
+                    circuit_breaker.record_failure()
+                
+                raise
+            
+        except Exception as e:
+            logger.error(f"Request execution failed for provider {provider_id}: {e}")
+            raise
+
+    def get_all_providers(self) -> List[DynamicProvider]:
+        """Get all registered providers."""
+        return list(self.providers.values())
+
+    def get_active_providers(self) -> List[DynamicProvider]:
+        """Get all active providers."""
+        return [p for p in self.providers.values() 
+                if p.is_enabled and p.status == ProviderStatus.ACTIVE]
+
+    def get_provider_metrics(self, provider_id: str) -> Optional[ProviderMetrics]:
+        """Get metrics for a specific provider."""
+        provider = self.providers.get(provider_id)
+        return provider.metrics if provider else None
+
+    def get_system_status(self) -> dict:
+        """Get overall system status."""
+        total_providers = len(self.providers)
+        active_providers = len(self.get_active_providers())
+        
+        return {
+            "total_providers": total_providers,
+            "active_providers": active_providers,
+            "inactive_providers": total_providers - active_providers,
+            "system_config": {
+                "auto_authenticate": self.system_config.auto_authenticate,
+                "max_concurrent_requests": self.system_config.max_concurrent_requests,
+                "default_timeout": self.system_config.default_timeout_seconds
+            },
+            "providers": {
+                provider.id: {
+                    "name": provider.name,
+                    "status": provider.status.value,
+                    "is_enabled": provider.is_enabled,
+                    "supported_models": provider.supported_models,
+                    "metrics": {
+                        "total_requests": provider.metrics.total_requests,
+                        "error_count": provider.metrics.error_count,
+                        "success_rate": provider.metrics.calculate_success_rate(),
+                        "avg_response_time": provider.metrics.calculate_avg_response_time(),
+                        "consecutive_failures": provider.metrics.consecutive_failures
+                    }
+                }
+                for provider in self.providers.values()
+            }
+        }

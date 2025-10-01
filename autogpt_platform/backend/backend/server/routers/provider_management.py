@@ -13,6 +13,7 @@ import json
 from backend.util.smart_scaling_engine import SmartScalingEngine
 from backend.util.browser_instance_manager import BrowserInstanceManager
 from backend.data.chat_proxy_models import ChatServiceType
+from backend.server.dependencies import ScalingEngineDep
 
 
 logger = logging.getLogger(__name__)
@@ -96,46 +97,36 @@ async def shutdown_provider_management():
 # Provider Management Endpoints
 
 @router.get("/providers")
-async def list_providers():
+async def list_providers(scaling_engine = ScalingEngineDep):
     """List all available providers and their status."""
-    if not scaling_engine:
-        raise HTTPException(status_code=503, detail="Scaling engine not initialized")
     
     try:
         status = scaling_engine.get_status()
         
-        # Format provider information
+        # Get providers from the scaling engine's actual provider metrics
         providers = []
-        for service_type in ChatServiceType:
-            provider_info = {
-                "service_type": service_type.value,
-                "enabled": service_type in scaling_engine.provider_status,
-                "status": "active" if service_type in scaling_engine.provider_status else "inactive",
-                "browser_instance_id": None,
-                "is_busy": False,
-                "active_requests": 0,
-                "total_requests": 0,
-                "error_count": 0
-            }
-            
-            if service_type in scaling_engine.provider_status:
-                provider = scaling_engine.provider_status[service_type]
-                provider_info.update({
-                    "browser_instance_id": provider.browser_instance_id,
-                    "is_busy": provider.is_busy,
-                    "active_requests": provider.active_requests,
-                    "total_requests": provider.total_requests,
-                    "error_count": provider.error_count,
-                    "last_request_time": provider.last_request_time.isoformat() if provider.last_request_time else None
-                })
-            
-            providers.append(provider_info)
         
+        # Use the actual provider data from the scaling engine
+        for service_type, provider_data in status.get("providers", {}).items():
+            provider_info = {
+                "service_type": service_type,
+                "enabled": True,  # If it's in the status, it's enabled
+                "status": "active",
+                "browser_instance_id": provider_data.get("browser_instance_id"),
+                "is_busy": provider_data.get("is_busy", False),
+                "active_requests": provider_data.get("active_requests", 0),
+                "total_requests": provider_data.get("total_requests", 0),
+                "error_count": provider_data.get("error_count", 0),
+                "avg_response_time": provider_data.get("avg_response_time", 0),
+                "success_rate": provider_data.get("success_rate", 1.0)
+            }
+            providers.append(provider_info)
+
         return {
             "providers": providers,
             "total_providers": len(providers),
             "active_providers": len([p for p in providers if p["enabled"]]),
-            "metrics": status["metrics"]
+            "metrics": status.get("metrics", {})
         }
         
     except Exception as e:
@@ -144,10 +135,8 @@ async def list_providers():
 
 
 @router.post("/providers/{service_type}/enable")
-async def enable_provider(service_type: str):
+async def enable_provider(service_type: str, scaling_engine = ScalingEngineDep):
     """Enable a specific provider."""
-    if not scaling_engine:
-        raise HTTPException(status_code=503, detail="Scaling engine not initialized")
     
     try:
         # Validate service type
@@ -156,8 +145,15 @@ async def enable_provider(service_type: str):
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid service type: {service_type}")
         
-        # For now, providers are enabled by default when instances start
-        # In the future, this could be more dynamic
+        # Check if provider exists in scaling engine
+        status = scaling_engine.get_status()
+        providers = status.get("providers", {})
+        
+        if service_type not in providers:
+            raise HTTPException(status_code=404, detail=f"Provider {service_type} not found")
+        
+        # In a full implementation, this would enable the provider
+        # For now, we'll just return success since providers are managed by the scaling engine
         
         return {
             "success": True,
@@ -173,10 +169,8 @@ async def enable_provider(service_type: str):
 
 
 @router.post("/providers/{service_type}/disable")
-async def disable_provider(service_type: str):
+async def disable_provider(service_type: str, scaling_engine = ScalingEngineDep):
     """Disable a specific provider."""
-    if not scaling_engine:
-        raise HTTPException(status_code=503, detail="Scaling engine not initialized")
     
     try:
         # Validate service type
@@ -185,8 +179,15 @@ async def disable_provider(service_type: str):
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid service type: {service_type}")
         
-        # For now, providers are disabled when instances stop
-        # In the future, this could be more granular
+        # Check if provider exists in scaling engine
+        status = scaling_engine.get_status()
+        providers = status.get("providers", {})
+        
+        if service_type not in providers:
+            raise HTTPException(status_code=404, detail=f"Provider {service_type} not found")
+        
+        # In a full implementation, this would disable the provider
+        # For now, we'll just return success since providers are managed by the scaling engine
         
         return {
             "success": True,

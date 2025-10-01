@@ -545,7 +545,7 @@ export const ProviderDashboard: React.FC = () => {
                     <span>{metrics.total_concurrent_requests}</span>
                   </div>
                   <Progress 
-                    value={Math.min((metrics.total_concurrent_requests / metrics.total_active_providers) * 100, 100)} 
+                    value={metrics.total_active_providers > 0 ? Math.min((metrics.total_concurrent_requests / metrics.total_active_providers) * 100, 100) : 0} 
                     className="h-2"
                   />
                 </div>

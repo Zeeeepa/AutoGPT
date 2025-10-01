@@ -88,8 +88,11 @@ async def lifespan_context(app: fastapi.FastAPI):
     try:
         await backend.server.routers.provider_management.initialize_provider_management()
         
-        # Set scaling engine reference in OpenAI proxy
-        backend.server.routers.openai_proxy.scaling_engine = backend.server.routers.provider_management.scaling_engine
+        # Set up dependency injection
+        from backend.server.dependencies import set_scaling_engine, set_provider_manager
+        set_scaling_engine(backend.server.routers.provider_management.scaling_engine)
+        if hasattr(backend.server.routers.provider_management, 'provider_manager'):
+            set_provider_manager(backend.server.routers.provider_management.provider_manager)
         
         logger.info("Provider management system initialized")
     except Exception as e:

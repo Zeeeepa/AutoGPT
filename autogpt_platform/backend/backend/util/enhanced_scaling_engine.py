@@ -10,9 +10,11 @@ Features:
 """
 
 import asyncio
+import os
 import time
 import logging
 import statistics
+import uuid
 from typing import Dict, List, Optional, Set, Tuple
 from enum import Enum
 from dataclasses import dataclass, field
@@ -131,22 +133,25 @@ class EnhancedScalingEngine:
     - Multi-metric scaling decisions
     """
     
-    def __init__(self, browser_manager: BrowserInstanceManager):
+    def __init__(self, browser_manager: BrowserInstanceManager, config: Optional[dict] = None):
         self.browser_manager = browser_manager
         self.provider_metrics: Dict[ChatServiceType, ProviderMetrics] = {}
         self.instance_metrics: Dict[int, InstanceMetrics] = {}
         self.metrics = ScalingMetrics()
         
+        # Load configuration from environment or provided config
+        config = config or {}
+        
         # Enhanced scaling configuration
-        self.IDLE_TIMEOUT_MINUTES = 15  # Faster scale-down
-        self.MIN_INSTANCES = 1  # Always keep base instance
-        self.MAX_INSTANCES = None  # Unlimited scaling
-        self.PROVIDERS_PER_INSTANCE = 5
-        self.SCALING_COOLDOWN_SECONDS = 30  # Faster decisions
+        self.IDLE_TIMEOUT_MINUTES = int(os.getenv("SCALING_IDLE_TIMEOUT_MINUTES", config.get("idle_timeout_minutes", 15)))
+        self.MIN_INSTANCES = int(os.getenv("SCALING_MIN_INSTANCES", config.get("min_instances", 1)))
+        self.MAX_INSTANCES = self._parse_max_instances(os.getenv("SCALING_MAX_INSTANCES", config.get("max_instances")))
+        self.PROVIDERS_PER_INSTANCE = int(os.getenv("SCALING_PROVIDERS_PER_INSTANCE", config.get("providers_per_instance", 5)))
+        self.SCALING_COOLDOWN_SECONDS = int(os.getenv("SCALING_COOLDOWN_SECONDS", config.get("cooldown_seconds", 30)))
         
         # Advanced scaling parameters
-        self.SCALE_UP_THRESHOLD = 0.8  # Scale up at 80% capacity
-        self.SCALE_DOWN_THRESHOLD = 0.3  # Scale down below 30%
+        self.SCALE_UP_THRESHOLD = float(os.getenv("SCALING_UP_THRESHOLD", config.get("scale_up_threshold", 0.8)))
+        self.SCALE_DOWN_THRESHOLD = float(os.getenv("SCALING_DOWN_THRESHOLD", config.get("scale_down_threshold", 0.3)))
         self.PREDICTIVE_SCALING_WINDOW = 300  # 5 minutes
         self.MAX_CONCURRENT_SCALING_OPERATIONS = 5
         self.INSTANCE_STARTUP_TIMEOUT = 120  # 2 minutes
@@ -172,6 +177,16 @@ class EnhancedScalingEngine:
         self._monitoring_task = None
         self._metrics_task = None
         self._prediction_task = None
+
+    def _parse_max_instances(self, value) -> Optional[int]:
+        """Parse max instances configuration value."""
+        if value is None or str(value).lower() in ['none', 'unlimited', '']:
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid max_instances value: {value}, using unlimited")
+            return None
         
     def _initialize_base_instance(self):
         """Initialize the base browser instance (always active)."""
@@ -441,3 +456,421 @@ class EnhancedScalingEngine:
         })
         
         return fingerprint
+
+    async def _wait_for_capacity(self, service_type: ChatServiceType, request_data: dict, start_time: float) -> dict:
+        """Wait for capacity to become available."""
+        max_wait_time = 30  # seconds
+        check_interval = 0.5  # seconds
+        
+        waited_time = 0
+        while waited_time < max_wait_time:
+            # Check if capacity is now available
+            provider = await self._select_optimal_provider(service_type)
+            if provider:
+                return await self._process_request(provider, request_data, start_time)
+            
+            # Wait and check again
+            await asyncio.sleep(check_interval)
+            waited_time += check_interval
+        
+        # Timeout - return error response
+        raise Exception(f"Request timeout: No capacity available for {service_type} after {max_wait_time}s")
+
+    async def _process_request(self, provider: ProviderMetrics, request_data: dict, start_time: float) -> dict:
+        """Process request with the selected provider."""
+        try:
+            # Mark provider as busy
+            provider.is_busy = True
+            provider.active_requests += 1
+            provider.last_request_time = datetime.now()
+            
+            # Get browser instance
+            instance = self.instance_metrics[provider.browser_instance_id]
+            browser_instance = await self.browser_manager.get_instance(provider.browser_instance_id)
+            
+            if not browser_instance:
+                raise Exception(f"Browser instance {provider.browser_instance_id} not available")
+            
+            # Process the request (simplified - would integrate with actual chat service)
+            response_data = {
+                "id": f"chatcmpl-{uuid.uuid4().hex[:8]}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": request_data.get("model", "unknown"),
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": f"Response from {provider.service_type.value} via instance {provider.browser_instance_id}"
+                    },
+                    "finish_reason": "stop"
+                }],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30
+                }
+            }
+            
+            # Update metrics
+            response_time = time.time() - start_time
+            provider.response_times.append(response_time)
+            provider.total_requests += 1
+            
+            # Calculate new average response time
+            if provider.response_times:
+                provider.avg_response_time = statistics.mean(provider.response_times)
+            
+            # Update success rate
+            provider.success_rate = (provider.total_requests - provider.error_count) / provider.total_requests
+            
+            return response_data
+            
+        except Exception as e:
+            # Update error metrics
+            provider.error_count += 1
+            if provider.total_requests > 0:
+                provider.success_rate = (provider.total_requests - provider.error_count) / provider.total_requests
+            
+            logger.error(f"Request processing failed for {provider.service_type}: {e}")
+            raise
+            
+        finally:
+            # Mark provider as not busy
+            provider.is_busy = False
+            provider.active_requests = max(0, provider.active_requests - 1)
+
+    async def _scaling_monitor(self):
+        """Background task to monitor scaling needs."""
+        while True:
+            try:
+                await asyncio.sleep(self.SCALING_COOLDOWN_SECONDS)
+                
+                # Calculate current utilization
+                utilization = self._calculate_capacity_utilization()
+                
+                # Check if we need to scale up
+                if utilization >= self.SCALE_UP_THRESHOLD:
+                    await self._scale_up_decision()
+                
+                # Check if we can scale down
+                elif utilization <= self.SCALE_DOWN_THRESHOLD:
+                    await self._scale_down_decision()
+                
+                # Update metrics
+                self.metrics.capacity_utilization = utilization
+                self.metrics.total_active_instances = len([i for i in self.instance_metrics.values() if i.is_active])
+                self.metrics.total_active_providers = len([p for p in self.provider_metrics.values() if not p.is_busy])
+                
+            except Exception as e:
+                logger.error(f"Scaling monitor error: {e}")
+
+    async def _health_monitor(self):
+        """Background task to monitor instance and provider health."""
+        while True:
+            try:
+                await asyncio.sleep(60)  # Check every minute
+                
+                # Check instance health
+                for instance_id, instance in self.instance_metrics.items():
+                    if not instance.is_active:
+                        continue
+                    
+                    # Check if instance is responsive
+                    try:
+                        browser_instance = await self.browser_manager.get_instance(instance_id)
+                        if not browser_instance:
+                            instance.consecutive_failures += 1
+                            instance.health_score = max(0.1, instance.health_score - 0.1)
+                        else:
+                            instance.consecutive_failures = 0
+                            instance.health_score = min(1.0, instance.health_score + 0.1)
+                    except Exception as e:
+                        logger.warning(f"Health check failed for instance {instance_id}: {e}")
+                        instance.consecutive_failures += 1
+                        instance.health_score = max(0.1, instance.health_score - 0.2)
+                
+                # Check provider health
+                for provider in self.provider_metrics.values():
+                    instance = self.instance_metrics.get(provider.browser_instance_id)
+                    if instance and instance.consecutive_failures >= 3:
+                        provider.error_count += 1
+                
+            except Exception as e:
+                logger.error(f"Health monitor error: {e}")
+
+    async def _metrics_collector(self):
+        """Background task to collect and update metrics."""
+        while True:
+            try:
+                await asyncio.sleep(30)  # Collect every 30 seconds
+                
+                # Collect current metrics
+                current_metrics = ScalingMetrics()
+                current_metrics.total_active_instances = len([i for i in self.instance_metrics.values() if i.is_active])
+                current_metrics.total_active_providers = len(self.provider_metrics)
+                current_metrics.total_concurrent_requests = sum(p.active_requests for p in self.provider_metrics.values())
+                
+                # Calculate capacity metrics
+                current_metrics.total_capacity = current_metrics.total_active_instances * self.PROVIDERS_PER_INSTANCE
+                current_metrics.used_capacity = len([p for p in self.provider_metrics.values() if p.is_busy])
+                current_metrics.capacity_utilization = (
+                    current_metrics.used_capacity / current_metrics.total_capacity 
+                    if current_metrics.total_capacity > 0 else 0
+                )
+                
+                # Calculate performance metrics
+                if self.provider_metrics:
+                    response_times = [p.avg_response_time for p in self.provider_metrics.values() if p.avg_response_time > 0]
+                    current_metrics.avg_response_time = statistics.mean(response_times) if response_times else 0
+                    
+                    total_requests = sum(p.total_requests for p in self.provider_metrics.values())
+                    total_errors = sum(p.error_count for p in self.provider_metrics.values())
+                    current_metrics.error_rate = (total_errors / total_requests) if total_requests > 0 else 0
+                
+                # Store metrics
+                self.metrics = current_metrics
+                self.metrics_history.append(current_metrics)
+                
+            except Exception as e:
+                logger.error(f"Metrics collector error: {e}")
+
+    async def _predictive_analyzer(self):
+        """Background task for predictive scaling analysis."""
+        while True:
+            try:
+                await asyncio.sleep(self.PREDICTIVE_SCALING_WINDOW)  # Analyze every 5 minutes
+                
+                if len(self.metrics_history) < 3:
+                    await asyncio.sleep(60)
+                    continue
+                
+                # Analyze trends
+                recent_metrics = list(self.metrics_history)[-10:]  # Last 10 data points
+                utilizations = [m.capacity_utilization for m in recent_metrics]
+                
+                if len(utilizations) >= 3:
+                    # Simple trend analysis
+                    recent_avg = statistics.mean(utilizations[-3:])
+                    older_avg = statistics.mean(utilizations[-6:-3]) if len(utilizations) >= 6 else recent_avg
+                    
+                    if recent_avg > older_avg + 0.1:
+                        self.metrics.trend_direction = "increasing"
+                        # Predictive scale up if trend is strongly increasing
+                        if recent_avg > 0.6 and self.metrics.trend_direction == "increasing":
+                            await self._predictive_scale_up()
+                    elif recent_avg < older_avg - 0.1:
+                        self.metrics.trend_direction = "decreasing"
+                    else:
+                        self.metrics.trend_direction = "stable"
+                
+                # Predict future load
+                if len(utilizations) >= 5:
+                    # Simple linear prediction
+                    x = list(range(len(utilizations)))
+                    y = utilizations
+                    
+                    # Calculate simple linear regression slope
+                    n = len(x)
+                    slope = (n * sum(x[i] * y[i] for i in range(n)) - sum(x) * sum(y)) / (n * sum(x[i]**2 for i in range(n)) - sum(x)**2)
+                    
+                    # Predict next value
+                    self.metrics.predicted_load = max(0, min(1, utilizations[-1] + slope))
+                
+            except Exception as e:
+                logger.error(f"Predictive analyzer error: {e}")
+
+    async def _assign_providers_to_instance(self, instance_id: int):
+        """Assign providers to a new instance."""
+        try:
+            # Assign all service types to the new instance
+            service_types = [
+                ChatServiceType.K2THINK,
+                ChatServiceType.QWEN,
+                ChatServiceType.DEEPSEEK,
+                ChatServiceType.GROK,
+                ChatServiceType.ZAI
+            ]
+            
+            for service_type in service_types:
+                provider_id = f"{service_type.value}_{instance_id}"
+                
+                self.provider_metrics[service_type] = ProviderMetrics(
+                    service_type=service_type,
+                    browser_instance_id=instance_id
+                )
+                
+                # Update instance metrics
+                self.instance_metrics[instance_id].active_providers.add(service_type)
+            
+            self.instance_metrics[instance_id].provider_count = len(service_types)
+            logger.info(f"Assigned {len(service_types)} providers to instance {instance_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to assign providers to instance {instance_id}: {e}")
+            raise
+
+    def _update_capacity_metrics(self):
+        """Update capacity-related metrics."""
+        try:
+            active_instances = len([i for i in self.instance_metrics.values() if i.is_active])
+            total_providers = len(self.provider_metrics)
+            busy_providers = len([p for p in self.provider_metrics.values() if p.is_busy])
+            
+            self.metrics.total_active_instances = active_instances
+            self.metrics.total_active_providers = total_providers
+            self.metrics.total_capacity = active_instances * self.PROVIDERS_PER_INSTANCE
+            self.metrics.used_capacity = busy_providers
+            self.metrics.capacity_utilization = (
+                busy_providers / (active_instances * self.PROVIDERS_PER_INSTANCE)
+                if active_instances > 0 else 0
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to update capacity metrics: {e}")
+
+    def _calculate_capacity_utilization(self) -> float:
+        """Calculate current capacity utilization."""
+        try:
+            active_instances = len([i for i in self.instance_metrics.values() if i.is_active])
+            if active_instances == 0:
+                return 0.0
+            
+            total_capacity = active_instances * self.PROVIDERS_PER_INSTANCE
+            busy_providers = len([p for p in self.provider_metrics.values() if p.is_busy])
+            
+            return busy_providers / total_capacity
+            
+        except Exception as e:
+            logger.error(f"Failed to calculate capacity utilization: {e}")
+            return 0.0
+
+    async def _scale_down_decision(self):
+        """Make intelligent scale-down decision."""
+        try:
+            # Don't scale down below minimum instances
+            active_instances = [i for i in self.instance_metrics.values() if i.is_active]
+            if len(active_instances) <= self.MIN_INSTANCES:
+                return
+            
+            # Find least utilized instance (excluding base instance)
+            candidates = [i for i in active_instances if i.instance_id != 1]  # Don't remove base instance
+            if not candidates:
+                return
+            
+            # Sort by utilization (least busy first)
+            candidates.sort(key=lambda i: len([p for p in self.provider_metrics.values() 
+                                            if p.browser_instance_id == i.instance_id and p.is_busy]))
+            
+            # Check if least utilized instance has been idle long enough
+            least_utilized = candidates[0]
+            if (least_utilized.last_activity_time and 
+                (datetime.now() - least_utilized.last_activity_time).total_seconds() > self.IDLE_TIMEOUT_MINUTES * 60):
+                
+                await self._remove_instance(least_utilized.instance_id)
+                
+        except Exception as e:
+            logger.error(f"Scale down decision failed: {e}")
+
+    async def _predictive_scale_up(self):
+        """Perform predictive scale up based on trends."""
+        try:
+            logger.info("Performing predictive scale up based on increasing load trend")
+            await self._scale_up_decision()
+            
+            # Update metrics
+            self.metrics.last_scaling_event = ScalingEvent.PREDICTIVE_SCALE_UP
+            self.metrics.last_scaling_time = datetime.now()
+            self.metrics.scaling_events_count += 1
+            
+        except Exception as e:
+            logger.error(f"Predictive scale up failed: {e}")
+
+    async def _remove_instance(self, instance_id: int):
+        """Remove a browser instance and its providers."""
+        try:
+            logger.info(f"Removing instance {instance_id}")
+            
+            # Remove providers associated with this instance
+            providers_to_remove = [
+                service_type for service_type, provider in self.provider_metrics.items()
+                if provider.browser_instance_id == instance_id
+            ]
+            
+            for service_type in providers_to_remove:
+                del self.provider_metrics[service_type]
+            
+            # Mark instance as inactive
+            if instance_id in self.instance_metrics:
+                self.instance_metrics[instance_id].is_active = False
+            
+            # Remove from browser manager
+            await self.browser_manager.remove_instance(instance_id)
+            
+            # Update capacity metrics
+            self._update_capacity_metrics()
+            
+            # Update scaling metrics
+            self.metrics.last_scaling_event = ScalingEvent.SCALE_DOWN
+            self.metrics.last_scaling_time = datetime.now()
+            self.metrics.scaling_events_count += 1
+            
+            logger.info(f"Successfully removed instance {instance_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to remove instance {instance_id}: {e}")
+
+    async def _cleanup_idle_instances(self, force: bool = False):
+        """Cleanup idle instances during shutdown."""
+        try:
+            instances_to_remove = []
+            
+            for instance_id, instance in self.instance_metrics.items():
+                if instance_id == 1:  # Never remove base instance
+                    continue
+                    
+                if force or (instance.last_activity_time and 
+                           (datetime.now() - instance.last_activity_time).total_seconds() > self.IDLE_TIMEOUT_MINUTES * 60):
+                    instances_to_remove.append(instance_id)
+            
+            for instance_id in instances_to_remove:
+                await self._remove_instance(instance_id)
+                
+        except Exception as e:
+            logger.error(f"Cleanup idle instances failed: {e}")
+
+    def get_status(self) -> dict:
+        """Get current scaling engine status."""
+        return {
+            "metrics": {
+                "total_active_instances": self.metrics.total_active_instances,
+                "total_active_providers": self.metrics.total_active_providers,
+                "total_concurrent_requests": self.metrics.total_concurrent_requests,
+                "capacity_utilization": self.metrics.capacity_utilization,
+                "avg_response_time": self.metrics.avg_response_time,
+                "error_rate": self.metrics.error_rate,
+                "trend_direction": self.metrics.trend_direction,
+                "predicted_load": self.metrics.predicted_load
+            },
+            "instances": {
+                str(instance_id): {
+                    "is_active": instance.is_active,
+                    "provider_count": instance.provider_count,
+                    "health_score": instance.health_score,
+                    "consecutive_failures": instance.consecutive_failures
+                }
+                for instance_id, instance in self.instance_metrics.items()
+            },
+            "providers": {
+                service_type.value: {
+                    "browser_instance_id": provider.browser_instance_id,
+                    "is_busy": provider.is_busy,
+                    "active_requests": provider.active_requests,
+                    "total_requests": provider.total_requests,
+                    "error_count": provider.error_count,
+                    "avg_response_time": provider.avg_response_time,
+                    "success_rate": provider.success_rate
+                }
+                for service_type, provider in self.provider_metrics.items()
+            }
+        }

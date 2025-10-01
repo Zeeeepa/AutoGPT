@@ -267,51 +267,84 @@ DEFAULT_SERVICE_CONFIGS = {
 }
 
 
-# Real accounts for the 5 target services
-DEFAULT_ACCOUNTS = {
-    ChatServiceType.ZAI: [
-        ChatAccount(
-            id="zai_real_1",
-            service_type=ChatServiceType.ZAI,
-            email="developer@pixelium.uk",
-            password="developer123?",
-            status=AccountStatus.ACTIVE
-        )
-    ],
-    ChatServiceType.QWEN: [
-        ChatAccount(
-            id="qwen_real_1", 
-            service_type=ChatServiceType.QWEN,
-            email="developer@pixelium.uk",
-            password="developer1?",
-            status=AccountStatus.ACTIVE
-        )
-    ],
-    ChatServiceType.DEEPSEEK: [
-        ChatAccount(
-            id="deepseek_real_1",
-            service_type=ChatServiceType.DEEPSEEK,
-            email="zeeeepa+1@gmail.com", 
-            password="developer123??",
-            status=AccountStatus.ACTIVE
-        )
-    ],
-    ChatServiceType.K2THINK: [
-        ChatAccount(
-            id="k2think_real_1",
-            service_type=ChatServiceType.K2THINK,
-            email="developer@pixelium.uk",
-            password="developer123?",
-            status=AccountStatus.ACTIVE
-        )
-    ],
-    ChatServiceType.GROK: [
-        ChatAccount(
-            id="grok_real_1",
-            service_type=ChatServiceType.GROK,
-            email="developer@pixelium.uk",
-            password="developer123??",
-            status=AccountStatus.ACTIVE
-        )
-    ]
-}
+# Default accounts loaded from environment variables
+def get_default_accounts():
+    """Load default accounts from environment variables."""
+    import os
+    
+    accounts = {}
+    
+    # Z.AI
+    zai_email = os.getenv("ZAI_EMAIL")
+    zai_password = os.getenv("ZAI_PASSWORD")
+    if zai_email and zai_password:
+        accounts[ChatServiceType.ZAI] = [
+            ChatAccount(
+                id="zai_env_1",
+                service_type=ChatServiceType.ZAI,
+                email=zai_email,
+                password=zai_password,
+                status=AccountStatus.ACTIVE
+            )
+        ]
+    
+    # Qwen.AI
+    qwen_email = os.getenv("QWEN_EMAIL")
+    qwen_password = os.getenv("QWEN_PASSWORD")
+    if qwen_email and qwen_password:
+        accounts[ChatServiceType.QWEN] = [
+            ChatAccount(
+                id="qwen_env_1",
+                service_type=ChatServiceType.QWEN,
+                email=qwen_email,
+                password=qwen_password,
+                status=AccountStatus.ACTIVE
+            )
+        ]
+    
+    # DeepSeek
+    deepseek_email = os.getenv("DEEPSEEK_EMAIL")
+    deepseek_password = os.getenv("DEEPSEEK_PASSWORD")
+    if deepseek_email and deepseek_password:
+        accounts[ChatServiceType.DEEPSEEK] = [
+            ChatAccount(
+                id="deepseek_env_1",
+                service_type=ChatServiceType.DEEPSEEK,
+                email=deepseek_email,
+                password=deepseek_password,
+                status=AccountStatus.ACTIVE
+            )
+        ]
+    
+    # K2Think
+    k2think_email = os.getenv("K2THINK_EMAIL")
+    k2think_password = os.getenv("K2THINK_PASSWORD")
+    if k2think_email and k2think_password:
+        accounts[ChatServiceType.K2THINK] = [
+            ChatAccount(
+                id="k2think_env_1",
+                service_type=ChatServiceType.K2THINK,
+                email=k2think_email,
+                password=k2think_password,
+                status=AccountStatus.ACTIVE
+            )
+        ]
+    
+    # Grok
+    grok_email = os.getenv("GROK_EMAIL")
+    grok_password = os.getenv("GROK_PASSWORD")
+    if grok_email and grok_password:
+        accounts[ChatServiceType.GROK] = [
+            ChatAccount(
+                id="grok_env_1",
+                service_type=ChatServiceType.GROK,
+                email=grok_email,
+                password=grok_password,
+                status=AccountStatus.ACTIVE
+            )
+        ]
+    
+    return accounts
+
+# Use function to get accounts from environment
+DEFAULT_ACCOUNTS = get_default_accounts()

@@ -6,6 +6,7 @@ Provides drop-in replacement for OpenAI API using browser automation.
 import asyncio
 import json
 import logging
+import os
 import time
 import uuid
 from datetime import datetime
@@ -35,8 +36,8 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/v1", tags=["openai-proxy"])
 
-# Global reference to scaling engine (will be set during startup)
-scaling_engine = None
+# Import dependency injection
+from backend.server.dependencies import ScalingEngineDep
 
 
 # OpenAI-compatible request/response models
@@ -363,7 +364,8 @@ async def send_message_to_service(
 @router.post("/chat/completions")
 async def chat_completions(
     request: ChatCompletionRequest,
-    http_request: Request
+    http_request: Request,
+    scaling_engine = ScalingEngineDep
 ) -> ChatCompletionResponse:
     """
     OpenAI-compatible chat completions endpoint.
@@ -373,16 +375,21 @@ async def chat_completions(
         # Get Stagehand API key from environment or request headers
         stagehand_api_key = http_request.headers.get("X-Stagehand-API-Key")
         if not stagehand_api_key:
-            # For demo purposes, use a default key
-            # In production, this should be properly configured
-            stagehand_api_key = "your-stagehand-api-key"
+            # Try to get from environment
+            stagehand_api_key = os.getenv("STAGEHAND_API_KEY")
+            
+        if not stagehand_api_key:
+            raise HTTPException(
+                status_code=401,
+                detail="Stagehand API key is required. Provide it via 'X-Stagehand-API-Key' header or STAGEHAND_API_KEY environment variable."
+            )
             
         # Map model to service
         service_type = await get_chat_service_from_model(request.model)
         
         logger.info(f"Processing chat completion for {service_type} with model {request.model}")
         
-        # Use smart scaling engine if available, otherwise fallback to load balancer
+        # Use smart scaling engine (injected via dependency)
         if scaling_engine:
             # Convert request to dict format for scaling engine
             request_data = {
