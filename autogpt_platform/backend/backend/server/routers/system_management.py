@@ -70,7 +70,7 @@ async def get_system_health():
             components["yaml_config"] = {
                 "status": "healthy",
                 "providers_count": len(yaml_loader.providers),
-                "last_reload": yaml_loader.last_reload.isoformat() if yaml_loader.last_reload else None
+                "last_reload": getattr(yaml_loader, 'last_reload', None).isoformat() if getattr(yaml_loader, 'last_reload', None) else None
             }
         except Exception as e:
             components["yaml_config"] = {
@@ -300,14 +300,14 @@ async def list_yaml_providers():
                 "username": provider.username,
                 "models": provider.models,
                 "is_default": provider.is_default,
-                "timeout": provider.timeout,
-                "max_retries": provider.max_retries
+                "timeout": getattr(provider, 'timeout', 30),
+                "max_retries": getattr(provider, 'max_retries', 3)
             })
         
         return {
             "providers": providers,
             "total_count": len(providers),
-            "last_reload": yaml_loader.last_reload.isoformat() if yaml_loader.last_reload else None
+            "last_reload": getattr(yaml_loader, 'last_reload', None).isoformat() if getattr(yaml_loader, 'last_reload', None) else None
         }
         
     except Exception as e:
@@ -345,7 +345,8 @@ async def validate_configuration():
                 result["valid"] = False
                 result["issues"].append("No models configured")
             
-            if provider.timeout <= 0:
+            timeout = getattr(provider, 'timeout', 30)
+            if timeout <= 0:
                 result["valid"] = False
                 result["issues"].append("Invalid timeout value")
             
@@ -492,9 +493,13 @@ async def get_scaling_metrics():
 
 
 @router.post("/scaling/manual-scale")
-async def manual_scale_workers(target_workers: int = Field(..., ge=1, le=50)):
+async def manual_scale_workers(request: dict):
     """Manually scale the number of workers."""
     try:
+        target_workers = request.get("target_workers", 1)
+        if not isinstance(target_workers, int) or target_workers < 1 or target_workers > 50:
+            raise HTTPException(status_code=400, detail="target_workers must be an integer between 1 and 50")
+        
         from backend.util.flareprox_autoscaler import get_flareprox_autoscaler
         autoscaler = get_flareprox_autoscaler()
         
