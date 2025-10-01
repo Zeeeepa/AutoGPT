@@ -1,53 +1,202 @@
 """
-FlareProx integration for IP rotation and proxy functionality.
-Provides seamless integration with Cloudflare Workers for request routing.
+FlareProx Integration with Auto-Scaling Based on Request Volume.
+
+This module provides integration between the AI provider system and FlareProx
+for automatic scaling based on request volume and load.
 """
 
 import asyncio
-import json
 import logging
 import os
-import random
 import time
-from typing import Dict, List, Optional, Any
-import httpx
+from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime, timedelta
+from collections import deque, defaultdict
+from dataclasses import dataclass, field
+import json
+
+# Import FlareProx components
+import sys
 from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from flareprox import CloudflareManager, FlareProxError
 
 logger = logging.getLogger(__name__)
 
 
-class FlareProxManager:
-    """Manages FlareProx endpoints for IP rotation."""
+@dataclass
+class RequestMetrics:
+    """Metrics for request volume tracking."""
+    timestamp: datetime
+    endpoint: str
+    provider_id: str
+    response_time: float
+    success: bool
+    user_ip: Optional[str] = None
+
+
+@dataclass
+class ScalingMetrics:
+    """Metrics for scaling decisions."""
+    requests_per_minute: float = 0.0
+    requests_per_hour: float = 0.0
+    average_response_time: float = 0.0
+    error_rate: float = 0.0
+    active_workers: int = 0
+    total_capacity: int = 0
+    utilization_percentage: float = 0.0
+
+
+@dataclass
+class WorkerInstance:
+    """Represents a Cloudflare Worker instance."""
+    worker_id: str
+    worker_name: str
+    worker_url: str
+    created_at: datetime
+    last_used: datetime
+    request_count: int = 0
+    error_count: int = 0
+    is_active: bool = True
+
+
+class RequestVolumeMonitor:
+    """Monitors request volume and provides scaling metrics."""
     
-    def __init__(self, config_file: Optional[str] = None):
-        self.config_file = config_file or "flareprox.json"
-        self.endpoints: List[Dict[str, Any]] = []
-        self.current_index = 0
-        self.client = httpx.AsyncClient(timeout=30.0)
-        self.flareprox_script = None
+    def __init__(self, window_size_minutes: int = 60):
+        self.window_size_minutes = window_size_minutes
+        self.request_history: deque = deque(maxlen=10000)  # Keep last 10k requests
+        self.metrics_cache: Optional[ScalingMetrics] = None
+        self.cache_expiry: Optional[datetime] = None
+        self.cache_duration_seconds = 30  # Cache metrics for 30 seconds
+    
+    def record_request(self, 
+                      endpoint: str, 
+                      provider_id: str, 
+                      response_time: float, 
+                      success: bool,
+                      user_ip: Optional[str] = None):
+        """Record a request for volume monitoring."""
+        metrics = RequestMetrics(
+            timestamp=datetime.now(),
+            endpoint=endpoint,
+            provider_id=provider_id,
+            response_time=response_time,
+            success=success,
+            user_ip=user_ip
+        )
+        self.request_history.append(metrics)
         
-    async def initialize(self) -> bool:
-        """Initialize FlareProx system and create endpoints."""
-        try:
-            # Import FlareProx functionality
-            await self._setup_flareprox()
-            
-            # Load existing endpoints or create new ones
-            if await self._load_existing_endpoints():
-                logger.info(f"Loaded {len(self.endpoints)} existing FlareProx endpoints")
-                return True
-            else:
-                logger.info("No existing endpoints found, creating new ones...")
-                return await self._create_new_endpoints()
-                
-        except Exception as e:
-            logger.error(f"Failed to initialize FlareProx: {e}")
-            return False
+        # Invalidate cache
+        self.metrics_cache = None
     
-    async def _setup_flareprox(self):
-        """Set up FlareProx script access."""
-        try:
-            # Import FlareProx classes from the script
+    def get_scaling_metrics(self) -> ScalingMetrics:
+        """Get current scaling metrics."""
+        now = datetime.now()
+        
+        # Return cached metrics if still valid
+        if (self.metrics_cache and self.cache_expiry and 
+            now < self.cache_expiry):
+            return self.metrics_cache
+        
+        # Calculate new metrics
+        one_minute_ago = now - timedelta(minutes=1)
+        one_hour_ago = now - timedelta(hours=1)
+        
+        # Filter requests by time windows
+        recent_requests = [r for r in self.request_history if r.timestamp >= one_minute_ago]
+        hourly_requests = [r for r in self.request_history if r.timestamp >= one_hour_ago]
+        
+        # Calculate metrics
+        requests_per_minute = len(recent_requests)
+        requests_per_hour = len(hourly_requests)
+        
+        # Average response time
+        if recent_requests:
+            avg_response_time = sum(r.response_time for r in recent_requests) / len(recent_requests)
+        else:
+            avg_response_time = 0.0
+        
+        # Error rate
+        if recent_requests:
+            error_count = sum(1 for r in recent_requests if not r.success)
+            error_rate = error_count / len(recent_requests)
+        else:
+            error_rate = 0.0
+        
+        # Create metrics object
+        metrics = ScalingMetrics(
+            requests_per_minute=requests_per_minute,
+            requests_per_hour=requests_per_hour,
+            average_response_time=avg_response_time,
+            error_rate=error_rate
+        )
+        
+        # Cache the metrics
+        self.metrics_cache = metrics
+        self.cache_expiry = now + timedelta(seconds=self.cache_duration_seconds)
+        
+        return metrics
+    
+    def get_provider_metrics(self, provider_id: str) -> Dict[str, Any]:
+        """Get metrics for a specific provider."""
+        now = datetime.now()
+        one_hour_ago = now - timedelta(hours=1)
+        
+        provider_requests = [
+            r for r in self.request_history 
+            if r.provider_id == provider_id and r.timestamp >= one_hour_ago
+        ]
+        
+        if not provider_requests:
+            return {
+                "requests_per_hour": 0,
+                "average_response_time": 0.0,
+                "error_rate": 0.0,
+                "last_request": None
+            }
+        
+        return {
+            "requests_per_hour": len(provider_requests),
+            "average_response_time": sum(r.response_time for r in provider_requests) / len(provider_requests),
+            "error_rate": sum(1 for r in provider_requests if not r.success) / len(provider_requests),
+            "last_request": max(r.timestamp for r in provider_requests).isoformat()
+        }
+
+
+class FlareProxAutoScaler:
+    """Auto-scaling manager for FlareProx workers based on request volume."""
+    
+    def __init__(self, 
+                 cloudflare_api_token: str,
+                 cloudflare_account_id: str,
+                 cloudflare_zone_id: Optional[str] = None):
+        self.cloudflare_manager = CloudflareManager(
+            api_token=cloudflare_api_token,
+            account_id=cloudflare_account_id,
+            zone_id=cloudflare_zone_id
+        )
+        
+        # Scaling configuration
+        self.min_workers = 1
+        self.max_workers = 50  # Reasonable limit
+        self.scale_up_threshold_rpm = 100  # Scale up if > 100 requests/minute
+        self.scale_down_threshold_rpm = 20  # Scale down if < 20 requests/minute
+        self.scale_up_response_time_threshold = 5.0  # Scale up if avg response time > 5s
+        self.scale_down_idle_minutes = 10  # Scale down workers idle for 10+ minutes
+        
+        # Worker management
+        self.active_workers: Dict[str, WorkerInstance] = {}
+        self.worker_rotation_index = 0
+        
+        # Monitoring
+        self.volume_monitor = RequestVolumeMonitor()
+        self.last_scaling_action = datetime.now()
+        self.scaling_cooldown_minutes = 2  # Wait 2 minutes between scaling actions
+        
+        # Background tasks
+        self._scaling_task: Optional[asyncio.Task] = None
+        self._cleanup_task: Optional[asyncio.Task] = None
             import sys
             flareprox_path = Path(__file__).parent.parent.parent.parent.parent / "flareprox.py"
             

@@ -84,6 +84,33 @@ async def lifespan_context(app: fastapi.FastAPI):
     await backend.data.graph.migrate_llm_models(LlmModel.GPT4O)
     await backend.integrations.webhooks.utils.migrate_legacy_triggered_graphs()
 
+    # Initialize YAML configuration system
+    try:
+        from backend.util.yaml_config_loader import initialize_yaml_config
+        yaml_loader = await initialize_yaml_config()
+        logger.info(f"YAML configuration system initialized with {len(yaml_loader.providers)} providers")
+    except Exception as e:
+        logger.error(f"Failed to initialize YAML configuration: {e}")
+    
+    # Initialize session management system
+    try:
+        from backend.util.session_manager import initialize_session_manager
+        session_manager = await initialize_session_manager()
+        logger.info(f"Session management system initialized with {len(session_manager.sessions)} sessions")
+    except Exception as e:
+        logger.error(f"Failed to initialize session manager: {e}")
+    
+    # Initialize FlareProx auto-scaling system
+    try:
+        from backend.util.flareprox_autoscaler import initialize_flareprox_autoscaler
+        flareprox_initialized = await initialize_flareprox_autoscaler()
+        if flareprox_initialized:
+            logger.info("FlareProx auto-scaling system initialized successfully")
+        else:
+            logger.warning("FlareProx auto-scaling system failed to initialize - continuing without auto-scaling")
+    except Exception as e:
+        logger.warning(f"FlareProx auto-scaling initialization error: {e} - continuing without auto-scaling")
+
     # Initialize provider management system
     try:
         await backend.server.routers.provider_management.initialize_provider_management()
@@ -97,17 +124,6 @@ async def lifespan_context(app: fastapi.FastAPI):
         logger.info("Provider management system initialized")
     except Exception as e:
         logger.error(f"Failed to initialize provider management: {e}")
-    
-    # Initialize FlareProx system
-    try:
-        from backend.util.flareprox_integration import initialize_flareprox
-        flareprox_initialized = await initialize_flareprox()
-        if flareprox_initialized:
-            logger.info("FlareProx system initialized successfully")
-        else:
-            logger.warning("FlareProx system failed to initialize - continuing without IP rotation")
-    except Exception as e:
-        logger.warning(f"FlareProx initialization error: {e} - continuing without IP rotation")
 
     with launch_darkly_context():
         yield
@@ -116,6 +132,30 @@ async def lifespan_context(app: fastapi.FastAPI):
         await shutdown_cloud_storage_handler()
     except Exception as e:
         logger.warning(f"Error shutting down cloud storage handler: {e}")
+
+    # Shutdown FlareProx auto-scaling system
+    try:
+        from backend.util.flareprox_autoscaler import shutdown_flareprox_autoscaler
+        await shutdown_flareprox_autoscaler()
+        logger.info("FlareProx auto-scaling system shutdown")
+    except Exception as e:
+        logger.warning(f"Error shutting down FlareProx auto-scaling: {e}")
+
+    # Shutdown session management system
+    try:
+        from backend.util.session_manager import shutdown_session_manager
+        await shutdown_session_manager()
+        logger.info("Session management system shutdown")
+    except Exception as e:
+        logger.warning(f"Error shutting down session manager: {e}")
+
+    # Shutdown YAML configuration system
+    try:
+        from backend.util.yaml_config_loader import shutdown_yaml_config
+        await shutdown_yaml_config()
+        logger.info("YAML configuration system shutdown")
+    except Exception as e:
+        logger.warning(f"Error shutting down YAML configuration: {e}")
 
     # Shutdown provider management system
     try:

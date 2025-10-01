@@ -157,29 +157,27 @@ DEFAULT_ACCOUNTS = {
 }
 
 
-async def get_chat_service_from_model(model: str) -> Optional[str]:
+async def get_chat_service_from_model(model: str) -> Tuple[Optional[str], Optional[str]]:
     """
-    Map OpenAI model name to provider ID using dynamic routing.
+    Map OpenAI model name to provider using dynamic routing with YAML config support.
     
     Returns:
-        Provider ID if found, None if should use default provider
+        Tuple of (provider_id, provider_type) where provider_type is 'yaml' or 'legacy'
     """
-    # First try dynamic provider manager
-    if dynamic_provider_manager:
-        # Check for exact model mapping
-        mapping = dynamic_provider_manager.system_config.get_model_mapping(model)
-        if mapping:
-            provider = dynamic_provider_manager.providers.get(mapping.provider_id)
-            if provider and provider.is_enabled and provider.is_healthy():
-                logger.info(f"Routing model '{model}' to dynamic provider '{provider.name}'")
-                return mapping.provider_id
+    # First try YAML configuration providers
+    try:
+        from backend.util.yaml_config_loader import get_yaml_config_loader
+        yaml_loader = await get_yaml_config_loader()
+        
+        # Check for exact model match in YAML providers
+        yaml_provider = yaml_loader.get_provider_by_model(model)
+        if yaml_provider:
+            provider_id = yaml_loader._generate_provider_id(yaml_provider.name)
+            logger.info(f"Routing model '{model}' to YAML provider '{yaml_provider.name}'")
+            return provider_id, 'yaml'
         
         # Check for provider name match (e.g., model="z.ai" -> Z.AI provider)
-        for provider_id, provider in dynamic_provider_manager.providers.items():
-            if not provider.is_enabled or not provider.is_healthy():
-                continue
-                
-            # Check if model name matches provider name variations
+        for provider_id, provider in yaml_loader.providers.items():
             provider_names = [
                 provider.name.lower(),
                 provider.name.lower().replace(' ', ''),
@@ -188,8 +186,44 @@ async def get_chat_service_from_model(model: str) -> Optional[str]:
             ]
             
             if model.lower() in provider_names:
-                logger.info(f"Routing model '{model}' to provider '{provider.name}' by name match")
-                return provider_id
+                logger.info(f"Routing model '{model}' to YAML provider '{provider.name}' by name match")
+                return provider_id, 'yaml'
+        
+        # Check if model should use default YAML provider
+        default_provider = yaml_loader.get_default_provider()
+        if default_provider and model.lower() in ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo']:
+            provider_id = yaml_loader._generate_provider_id(default_provider.name)
+            logger.info(f"Routing standard model '{model}' to default YAML provider '{default_provider.name}'")
+            return provider_id, 'yaml'
+            
+    except Exception as e:
+        logger.warning(f"Error accessing YAML configuration: {e}")
+    
+    # Fallback to dynamic provider manager
+    if dynamic_provider_manager:
+        # Check for exact model mapping
+        mapping = dynamic_provider_manager.system_config.get_model_mapping(model)
+        if mapping:
+            provider = dynamic_provider_manager.providers.get(mapping.provider_id)
+            if provider and provider.is_enabled and provider.is_healthy():
+                logger.info(f"Routing model '{model}' to dynamic provider '{provider.name}'")
+                return mapping.provider_id, 'dynamic'
+        
+        # Check for provider name match
+        for provider_id, provider in dynamic_provider_manager.providers.items():
+            if not provider.is_enabled or not provider.is_healthy():
+                continue
+                
+            provider_names = [
+                provider.name.lower(),
+                provider.name.lower().replace(' ', ''),
+                provider.name.lower().replace(' ', '-'),
+                provider.name.lower().replace(' ', '.'),
+            ]
+            
+            if model.lower() in provider_names:
+                logger.info(f"Routing model '{model}' to dynamic provider '{provider.name}' by name match")
+                return provider_id, 'dynamic'
         
         # Check for partial matches in supported models
         for provider_id, provider in dynamic_provider_manager.providers.items():
@@ -199,8 +233,8 @@ async def get_chat_service_from_model(model: str) -> Optional[str]:
             for supported_model in provider.supported_models:
                 if (model.lower() in supported_model.lower() or 
                     supported_model.lower() in model.lower()):
-                    logger.info(f"Routing model '{model}' to provider '{provider.name}' by partial match")
-                    return provider_id
+                    logger.info(f"Routing model '{model}' to dynamic provider '{provider.name}' by partial match")
+                    return provider_id, 'dynamic'
         
         # Use default provider if configured
         if dynamic_provider_manager.system_config.default_provider_id:
@@ -208,11 +242,12 @@ async def get_chat_service_from_model(model: str) -> Optional[str]:
                 dynamic_provider_manager.system_config.default_provider_id
             )
             if default_provider and default_provider.is_enabled and default_provider.is_healthy():
-                logger.info(f"Routing model '{model}' to default provider '{default_provider.name}'")
-                return dynamic_provider_manager.system_config.default_provider_id
+                logger.info(f"Routing model '{model}' to default dynamic provider '{default_provider.name}'")
+                return dynamic_provider_manager.system_config.default_provider_id, 'dynamic'
     
     # Fallback to legacy mapping for backward compatibility
-    return None
+    logger.info(f"No provider found for model '{model}', using legacy routing")
+    return None, 'legacy'
 
 
 async def get_legacy_chat_service_from_model(model: str) -> ChatServiceType:
@@ -384,33 +419,101 @@ async def chat_completions(
                 detail="Stagehand API key is required. Provide it via 'X-Stagehand-API-Key' header or STAGEHAND_API_KEY environment variable."
             )
             
-        # Map model to service
-        service_type = await get_chat_service_from_model(request.model)
+        # Map model to provider using new routing system
+        provider_id, provider_type = await get_chat_service_from_model(request.model)
         
-        logger.info(f"Processing chat completion for {service_type} with model {request.model}")
+        logger.info(f"Processing chat completion for model '{request.model}' -> provider '{provider_id}' (type: {provider_type})")
         
-        # Use smart scaling engine (injected via dependency)
-        if scaling_engine:
-            # Convert request to dict format for scaling engine
-            request_data = {
-                "model": request.model,
-                "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
-                "temperature": request.temperature,
-                "max_tokens": request.max_tokens,
-                "stream": request.stream
-            }
-            
+        # Handle YAML provider routing
+        if provider_type == 'yaml' and provider_id:
             try:
-                # Handle request through scaling engine
-                response = await scaling_engine.handle_request(service_type, request_data)
+                from backend.util.yaml_config_loader import get_yaml_config_loader
+                yaml_loader = await get_yaml_config_loader()
+                provider_config = yaml_loader.providers.get(provider_id)
                 
-                # Return the OpenAI-formatted response directly
+                if provider_config:
+                    # Use AI Provider Engine for YAML providers
+                    from backend.server.routers.simple_provider_api import get_ai_provider_engine
+                    engine = await get_ai_provider_engine()
+                    
+                    # Extract user message
+                    user_message = ""
+                    for msg in reversed(request.messages):
+                        if msg.role == "user":
+                            user_message = msg.content
+                            break
+                    
+                    if not user_message:
+                        raise HTTPException(status_code=400, detail="No user message found")
+                    
+                    # Send message through AI provider engine
+                    response = await engine.send_message(provider_id, user_message)
+                    
+                    if response.success:
+                        # Format as OpenAI response
+                        completion_id = f"chatcmpl-{uuid.uuid4().hex[:8]}"
+                        created_timestamp = int(time.time())
+                        
+                        return ChatCompletionResponse(
+                            id=completion_id,
+                            created=created_timestamp,
+                            model=request.model,
+                            choices=[
+                                ChatCompletionChoice(
+                                    index=0,
+                                    message=ChatMessage(role="assistant", content=response.content),
+                                    finish_reason="stop"
+                                )
+                            ]
+                        )
+                    else:
+                        raise HTTPException(status_code=500, detail=f"Provider error: {response.error_message}")
+                        
+            except Exception as e:
+                logger.error(f"YAML provider error: {e}")
+                # Fall through to legacy handling
+        
+        # Handle dynamic provider routing
+        elif provider_type == 'dynamic' and provider_id and scaling_engine:
+            try:
+                # Convert request to dict format for scaling engine
+                request_data = {
+                    "model": request.model,
+                    "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
+                    "temperature": request.temperature,
+                    "max_tokens": request.max_tokens,
+                    "stream": request.stream
+                }
+                
+                # Handle request through scaling engine
+                response = await scaling_engine.handle_request(provider_id, request_data)
                 return response
                 
             except Exception as e:
-                logger.error(f"Scaling engine error: {e}")
-                # Fallback to traditional method
-                pass
+                logger.error(f"Dynamic provider error: {e}")
+                # Fall through to legacy handling
+        
+        # Legacy routing fallback
+        service_type = await get_legacy_chat_service_from_model(request.model)
+        logger.info(f"Using legacy routing: {service_type}")
+        
+        # Use smart scaling engine for legacy services
+        if scaling_engine:
+            try:
+                request_data = {
+                    "model": request.model,
+                    "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
+                    "temperature": request.temperature,
+                    "max_tokens": request.max_tokens,
+                    "stream": request.stream
+                }
+                
+                response = await scaling_engine.handle_request(service_type, request_data)
+                return response
+                
+            except Exception as e:
+                logger.error(f"Legacy scaling engine error: {e}")
+                # Continue to traditional fallback
         
         # Fallback to traditional load balancer method
         # Get account for service
@@ -553,23 +656,70 @@ async def stream_chat_completion(
 
 @router.get("/models")
 async def list_models():
-    """List available models (OpenAI-compatible)"""
+    """List available models (OpenAI-compatible) including YAML providers"""
     models = []
     
-    for model_name, service_type in MODEL_SERVICE_MAPPING.items():
+    # Add models from YAML configuration
+    try:
+        from backend.util.yaml_config_loader import get_yaml_config_loader
+        yaml_loader = await get_yaml_config_loader()
+        
+        for provider_id, provider in yaml_loader.providers.items():
+            for model_name in provider.models:
+                models.append({
+                    "id": model_name,
+                    "object": "model",
+                    "created": int(time.time()),
+                    "owned_by": f"yaml-provider-{provider.name.lower().replace(' ', '-')}",
+                    "permission": [],
+                    "root": model_name,
+                    "parent": None
+                })
+                
+        logger.info(f"Added {len([m for p in yaml_loader.providers.values() for m in p.models])} models from YAML providers")
+        
+    except Exception as e:
+        logger.warning(f"Could not load YAML models: {e}")
+    
+    # Add models from dynamic providers
+    if dynamic_provider_manager:
+        try:
+            for provider_id, provider in dynamic_provider_manager.providers.items():
+                if provider.is_enabled and provider.is_healthy():
+                    for model_name in provider.supported_models:
+                        models.append({
+                            "id": model_name,
+                            "object": "model",
+                            "created": int(time.time()),
+                            "owned_by": f"dynamic-provider-{provider.name.lower().replace(' ', '-')}",
+                            "permission": [],
+                            "root": model_name,
+                            "parent": None
+                        })
+        except Exception as e:
+            logger.warning(f"Could not load dynamic provider models: {e}")
+    
+    # Add legacy models for backward compatibility
+    for model_name, service_type in LEGACY_MODEL_SERVICE_MAPPING.items():
         models.append({
             "id": model_name,
             "object": "model",
             "created": int(time.time()),
-            "owned_by": f"chat-proxy-{service_type.value}",
+            "owned_by": f"legacy-{service_type.value}",
             "permission": [],
             "root": model_name,
             "parent": None
         })
         
+    # Remove duplicates based on model ID
+    unique_models = {}
+    for model in models:
+        if model["id"] not in unique_models:
+            unique_models[model["id"]] = model
+    
     return {
         "object": "list",
-        "data": models
+        "data": list(unique_models.values())
     }
 
 
