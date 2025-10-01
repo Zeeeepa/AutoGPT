@@ -1,0 +1,16 @@
+providers:
+  - name: "Test Provider"
+    url: "https://httpbin.org"
+    username: "test@example.com"
+    password: "test-password"
+    models: ["test-model", "gpt-3.5-turbo"]
+    is_default: true
+    timeout: 30
+    max_retries: 3
+    selectors:
+      email: "#email"
+      password: "#password"
+      submit: ".login-btn"
+      chat_input: ".message-input"
+      send_button: ".send-btn"
+      response: ".response-text"

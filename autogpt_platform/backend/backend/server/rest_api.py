@@ -111,6 +111,22 @@ async def lifespan_context(app: fastapi.FastAPI):
     except Exception as e:
         logger.warning(f"FlareProx auto-scaling initialization error: {e} - continuing without auto-scaling")
 
+    # Initialize WebSocket monitoring system
+    try:
+        from backend.server.websocket.monitoring import initialize_websocket_monitoring
+        await initialize_websocket_monitoring()
+        logger.info("WebSocket monitoring system initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize WebSocket monitoring: {e}")
+
+    # Initialize metrics broadcaster
+    try:
+        from backend.server.websocket.metrics_broadcaster import initialize_metrics_broadcaster
+        await initialize_metrics_broadcaster()
+        logger.info("Metrics broadcaster initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize metrics broadcaster: {e}")
+
     # Initialize provider management system
     try:
         await backend.server.routers.provider_management.initialize_provider_management()
@@ -132,6 +148,22 @@ async def lifespan_context(app: fastapi.FastAPI):
         await shutdown_cloud_storage_handler()
     except Exception as e:
         logger.warning(f"Error shutting down cloud storage handler: {e}")
+
+    # Shutdown metrics broadcaster
+    try:
+        from backend.server.websocket.metrics_broadcaster import shutdown_metrics_broadcaster
+        await shutdown_metrics_broadcaster()
+        logger.info("Metrics broadcaster shutdown")
+    except Exception as e:
+        logger.warning(f"Error shutting down metrics broadcaster: {e}")
+
+    # Shutdown WebSocket monitoring system
+    try:
+        from backend.server.websocket.monitoring import shutdown_websocket_monitoring
+        await shutdown_websocket_monitoring()
+        logger.info("WebSocket monitoring system shutdown")
+    except Exception as e:
+        logger.warning(f"Error shutting down WebSocket monitoring: {e}")
 
     # Shutdown FlareProx auto-scaling system
     try:
@@ -340,6 +372,18 @@ app.include_router(
     backend.server.routers.provider_management.router,
     tags=["provider-management"],
     prefix="/api/provider-management",
+)
+
+# Add System Management router
+app.include_router(
+    backend.server.routers.system_management.router,
+    tags=["system-management"],
+)
+
+# Add WebSocket monitoring router
+app.include_router(
+    backend.server.websocket.monitoring.router,
+    tags=["websocket-monitoring"],
 )
 
 # Add Simple Provider API router (main user-facing API)
