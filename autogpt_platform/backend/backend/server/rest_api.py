@@ -302,6 +302,18 @@ app.include_router(
     prefix="/api/provider-management",
 )
 
+# Add Simple Provider API router (main user-facing API)
+try:
+    import backend.server.routers.simple_provider_api
+    app.include_router(
+        backend.server.routers.simple_provider_api.router,
+        tags=["simple-provider-api"],
+    )
+except ImportError as e:
+    logger.warning(f"Simple Provider API not available: {e}")
+except Exception as e:
+    logger.error(f"Failed to load Simple Provider API: {e}")
+
 app.mount("/external-api", external_app)
 
 
