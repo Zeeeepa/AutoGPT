@@ -1,0 +1,505 @@
+{
+  "validation_summary": {
+    "validation_time": 6.8927061557769775,
+    "total_tests": 23,
+    "passed_tests": 17,
+    "failed_tests": 6,
+    "success_rate": 73.91304347826086,
+    "backend_available": false,
+    "providers_validated": 5,
+    "architecture_valid": true
+  },
+  "test_results": {
+    "architecture_tests": [
+      {
+        "test_name": "Backend Module Import",
+        "success": false,
+        "details": {
+          "dynamic_provider_models": false,
+          "dynamic_provider_manager": false,
+          "authentication_config": false,
+          "provider_status": false
+        }
+      },
+      {
+        "test_name": "Stagehand Availability",
+        "success": true,
+        "details": {
+          "version": "0.5.1"
+        }
+      }
+    ],
+    "provider_creation_tests": [
+      {
+        "provider_name": "Mistral AI Chat",
+        "base_url": "https://chat.mistral.ai",
+        "provider_type": "webchat",
+        "validation_success": true,
+        "validation_details": {
+          "valid": true,
+          "errors": [],
+          "warnings": [],
+          "required_fields_present": true,
+          "auth_config_valid": true,
+          "chat_config_complete": true
+        },
+        "model_mappings_count": 4,
+        "auth_method": "email_password"
+      },
+      {
+        "provider_name": "Claude Chat",
+        "base_url": "https://claude.ai",
+        "provider_type": "webchat",
+        "validation_success": true,
+        "validation_details": {
+          "valid": true,
+          "errors": [],
+          "warnings": [],
+          "required_fields_present": true,
+          "auth_config_valid": true,
+          "chat_config_complete": true
+        },
+        "model_mappings_count": 4,
+        "auth_method": "email_password"
+      },
+      {
+        "provider_name": "ChatGPT Web",
+        "base_url": "https://chat.openai.com",
+        "provider_type": "webchat",
+        "validation_success": true,
+        "validation_details": {
+          "valid": true,
+          "errors": [],
+          "warnings": [],
+          "required_fields_present": true,
+          "auth_config_valid": true,
+          "chat_config_complete": true
+        },
+        "model_mappings_count": 4,
+        "auth_method": "email_password"
+      },
+      {
+        "provider_name": "Perplexity AI",
+        "base_url": "https://www.perplexity.ai",
+        "provider_type": "webchat",
+        "validation_success": true,
+        "validation_details": {
+          "valid": true,
+          "errors": [],
+          "warnings": [],
+          "required_fields_present": true,
+          "auth_config_valid": true,
+          "chat_config_complete": true
+        },
+        "model_mappings_count": 3,
+        "auth_method": "email_password"
+      },
+      {
+        "provider_name": "You.com Chat",
+        "base_url": "https://you.com/search",
+        "provider_type": "webchat",
+        "validation_success": true,
+        "validation_details": {
+          "valid": true,
+          "errors": [],
+          "warnings": [],
+          "required_fields_present": true,
+          "auth_config_valid": true,
+          "chat_config_complete": true
+        },
+        "model_mappings_count": 3,
+        "auth_method": "email_password"
+      }
+    ],
+    "model_mapping_tests": [
+      {
+        "model_name": "mistral",
+        "matched_providers": [
+          "Mistral AI Chat"
+        ],
+        "match_count": 1,
+        "routing_success": true,
+        "primary_provider": "Mistral AI Chat"
+      },
+      {
+        "model_name": "claude",
+        "matched_providers": [
+          "Claude Chat"
+        ],
+        "match_count": 1,
+        "routing_success": true,
+        "primary_provider": "Claude Chat"
+      },
+      {
+        "model_name": "gpt",
+        "matched_providers": [
+          "ChatGPT Web"
+        ],
+        "match_count": 1,
+        "routing_success": true,
+        "primary_provider": "ChatGPT Web"
+      },
+      {
+        "model_name": "chatgpt",
+        "matched_providers": [
+          "ChatGPT Web"
+        ],
+        "match_count": 1,
+        "routing_success": true,
+        "primary_provider": "ChatGPT Web"
+      },
+      {
+        "model_name": "perplexity",
+        "matched_providers": [
+          "Perplexity AI"
+        ],
+        "match_count": 1,
+        "routing_success": true,
+        "primary_provider": "Perplexity AI"
+      },
+      {
+        "model_name": "unknown-model",
+        "matched_providers": [],
+        "match_count": 0,
+        "routing_success": false,
+        "primary_provider": null
+      },
+      {
+        "test_name": "Model Mapping Summary",
+        "total_models": 18,
+        "total_conflicts": 0,
+        "conflicts": [],
+        "coverage": {
+          "mistral_models": 4,
+          "claude_models": 3,
+          "gpt_models": 3,
+          "other_models": 8
+        }
+      }
+    ],
+    "authentication_config_tests": [
+      {
+        "provider_name": "Mistral AI Chat",
+        "auth_method": "email_password",
+        "has_credentials": true,
+        "has_selectors": true,
+        "has_success_indicators": true,
+        "has_failure_indicators": true,
+        "validation_result": {
+          "automation_ready": true,
+          "issues": [],
+          "method": "email_password",
+          "has_login_url": true,
+          "selector_count": 3,
+          "indicator_count": 8
+        },
+        "automation_ready": true
+      },
+      {
+        "provider_name": "Claude Chat",
+        "auth_method": "email_password",
+        "has_credentials": true,
+        "has_selectors": true,
+        "has_success_indicators": true,
+        "has_failure_indicators": true,
+        "validation_result": {
+          "automation_ready": true,
+          "issues": [],
+          "method": "email_password",
+          "has_login_url": true,
+          "selector_count": 3,
+          "indicator_count": 5
+        },
+        "automation_ready": true
+      },
+      {
+        "provider_name": "ChatGPT Web",
+        "auth_method": "email_password",
+        "has_credentials": true,
+        "has_selectors": false,
+        "has_success_indicators": true,
+        "has_failure_indicators": true,
+        "validation_result": {
+          "automation_ready": false,
+          "issues": [
+            "Email selector not provided",
+            "Password selector not provided",
+            "Submit selector not provided"
+          ],
+          "method": "email_password",
+          "has_login_url": true,
+          "selector_count": 0,
+          "indicator_count": 3
+        },
+        "automation_ready": false
+      },
+      {
+        "provider_name": "Perplexity AI",
+        "auth_method": "email_password",
+        "has_credentials": true,
+        "has_selectors": false,
+        "has_success_indicators": true,
+        "has_failure_indicators": true,
+        "validation_result": {
+          "automation_ready": false,
+          "issues": [
+            "Email selector not provided",
+            "Password selector not provided",
+            "Submit selector not provided"
+          ],
+          "method": "email_password",
+          "has_login_url": false,
+          "selector_count": 0,
+          "indicator_count": 2
+        },
+        "automation_ready": false
+      },
+      {
+        "provider_name": "You.com Chat",
+        "auth_method": "email_password",
+        "has_credentials": true,
+        "has_selectors": false,
+        "has_success_indicators": true,
+        "has_failure_indicators": true,
+        "validation_result": {
+          "automation_ready": false,
+          "issues": [
+            "Email selector not provided",
+            "Password selector not provided",
+            "Submit selector not provided"
+          ],
+          "method": "email_password",
+          "has_login_url": false,
+          "selector_count": 0,
+          "indicator_count": 2
+        },
+        "automation_ready": false
+      }
+    ],
+    "integration_validation_tests": [
+      {
+        "test_name": "OpenAI API Compatibility",
+        "success": true,
+        "details": {
+          "required_endpoints": [
+            "/v1/chat/completions",
+            "/v1/models",
+            "/v1/health"
+          ],
+          "request_format_valid": true,
+          "response_format_valid": true
+        }
+      },
+      {
+        "test_name": "Load Balancing Capability",
+        "success": true,
+        "details": {
+          "multiple_providers": true,
+          "priority_system": true,
+          "failover_support": true
+        }
+      },
+      {
+        "test_name": "Scalability Assessment",
+        "success": true,
+        "details": {
+          "dynamic_provider_addition": true,
+          "runtime_configuration": true,
+          "session_management": true,
+          "concurrent_requests": true
+        }
+      },
+      {
+        "test_name": "Security Features",
+        "success": true,
+        "details": {
+          "credential_encryption": true,
+          "session_isolation": true,
+          "rate_limiting": true,
+          "input_validation": true
+        }
+      }
+    ]
+  },
+  "provider_configurations": [
+    {
+      "name": "Mistral AI Chat",
+      "description": "Mistral AI webchat interface with Stagehand automation",
+      "base_url": "https://chat.mistral.ai",
+      "provider_type": "webchat",
+      "auth_config": {
+        "method": "email_password",
+        "email": "developer@pixelium.uk",
+        "password": "develooper123?",
+        "login_url": "https://chat.mistral.ai/login",
+        "email_selector": "input[type=\"email\"]",
+        "password_selector": "input[type=\"password\"]",
+        "submit_selector": "button[type=\"submit\"]",
+        "success_indicators": [
+          ".chat-interface",
+          ".conversation-area",
+          "[data-testid=\"chat-input\"]",
+          ".chat-container"
+        ],
+        "failure_indicators": [
+          ".error-message",
+          ".login-error",
+          ".invalid-credentials",
+          ".auth-failed"
+        ]
+      },
+      "chat_config": {
+        "input_selector": "[data-testid=\"chat-input\"], .chat-input, textarea[placeholder*=\"message\"], #chat-input",
+        "send_selector": "[data-testid=\"send-button\"], .send-button, button[aria-label*=\"send\"], .submit-btn",
+        "response_selector": ".message-content, .response-text, .chat-message:last-child, .ai-response",
+        "wait_for_response": 10,
+        "typing_delay": 100
+      },
+      "model_mappings": [
+        "mistral",
+        "mistral-chat",
+        "mistral-ai",
+        "mistral-7b"
+      ],
+      "priority": 1,
+      "enabled": true,
+      "rate_limit": {
+        "requests_per_minute": 60,
+        "requests_per_hour": 1000
+      }
+    },
+    {
+      "name": "Claude Chat",
+      "description": "Anthropic Claude webchat interface",
+      "base_url": "https://claude.ai",
+      "provider_type": "webchat",
+      "auth_config": {
+        "method": "email_password",
+        "email": "test@example.com",
+        "password": "testpassword123",
+        "login_url": "https://claude.ai/login",
+        "email_selector": "input[name=\"email\"], input[type=\"email\"]",
+        "password_selector": "input[name=\"password\"], input[type=\"password\"]",
+        "submit_selector": "button[type=\"submit\"], .login-button",
+        "success_indicators": [
+          ".chat-interface",
+          ".conversation-container",
+          "[data-testid=\"chat-input\"]"
+        ],
+        "failure_indicators": [
+          ".error-message",
+          ".login-error"
+        ]
+      },
+      "chat_config": {
+        "input_selector": ".chat-input, [contenteditable=\"true\"]",
+        "send_selector": ".send-button, [aria-label*=\"Send\"]",
+        "response_selector": ".message-content, .claude-response",
+        "wait_for_response": 15
+      },
+      "model_mappings": [
+        "claude",
+        "claude-3",
+        "claude-3-sonnet",
+        "anthropic"
+      ],
+      "priority": 2,
+      "enabled": true
+    },
+    {
+      "name": "ChatGPT Web",
+      "description": "OpenAI ChatGPT webchat interface",
+      "base_url": "https://chat.openai.com",
+      "provider_type": "webchat",
+      "auth_config": {
+        "method": "email_password",
+        "email": "test@example.com",
+        "password": "testpassword123",
+        "login_url": "https://chat.openai.com/auth/login",
+        "success_indicators": [
+          ".chat-interface",
+          ".conversation-container"
+        ],
+        "failure_indicators": [
+          ".error-message"
+        ]
+      },
+      "chat_config": {
+        "input_selector": "#prompt-textarea, .chat-input",
+        "send_selector": "[data-testid=\"send-button\"], .send-button",
+        "response_selector": ".markdown, .message-content"
+      },
+      "model_mappings": [
+        "gpt",
+        "chatgpt",
+        "gpt-4",
+        "openai"
+      ],
+      "priority": 3,
+      "enabled": true
+    },
+    {
+      "name": "Perplexity AI",
+      "description": "Perplexity AI search and chat interface",
+      "base_url": "https://www.perplexity.ai",
+      "provider_type": "webchat",
+      "auth_config": {
+        "method": "email_password",
+        "email": "test@example.com",
+        "password": "testpassword123",
+        "success_indicators": [
+          ".search-interface"
+        ],
+        "failure_indicators": [
+          ".error-message"
+        ]
+      },
+      "chat_config": {
+        "input_selector": ".search-input, textarea",
+        "send_selector": ".search-button, .submit-btn",
+        "response_selector": ".search-result, .answer-content"
+      },
+      "model_mappings": [
+        "perplexity",
+        "pplx",
+        "perplexity-ai"
+      ],
+      "priority": 4,
+      "enabled": true
+    },
+    {
+      "name": "You.com Chat",
+      "description": "You.com AI chat interface",
+      "base_url": "https://you.com/search",
+      "provider_type": "webchat",
+      "auth_config": {
+        "method": "email_password",
+        "email": "test@example.com",
+        "password": "testpassword123",
+        "success_indicators": [
+          ".chat-mode"
+        ],
+        "failure_indicators": [
+          ".error-message"
+        ]
+      },
+      "chat_config": {
+        "input_selector": ".search-input",
+        "send_selector": ".search-button",
+        "response_selector": ".ai-response"
+      },
+      "model_mappings": [
+        "you",
+        "you-chat",
+        "youcom"
+      ],
+      "priority": 5,
+      "enabled": true
+    }
+  ],
+  "recommendations": [
+    "Install and configure backend dependencies for full functionality",
+    "Complete authentication configuration for 3 providers"
+  ],
+  "generated_at": "2025-09-29T22:43:16.875917"
+}

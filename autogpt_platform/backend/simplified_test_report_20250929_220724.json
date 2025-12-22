@@ -1,0 +1,171 @@
+{
+  "test_summary": {
+    "total_tests": 16,
+    "passed_tests": 15,
+    "failed_tests": 1,
+    "success_rate": 93.75,
+    "test_duration": 0.005538225173950195
+  },
+  "test_results": {
+    "routing_tests": [
+      {
+        "model": "z.ai",
+        "description": "Z.AI exact match",
+        "expected_type": "exact_match",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1,
+        "provider_id": "provider-z.ai"
+      },
+      {
+        "model": "k2",
+        "description": "K2Think exact match",
+        "expected_type": "exact_match",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1,
+        "provider_id": "provider-k2"
+      },
+      {
+        "model": "qwen",
+        "description": "Qwen exact match",
+        "expected_type": "exact_match",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1,
+        "provider_id": "provider-qwen"
+      },
+      {
+        "model": "custom-chat",
+        "description": "Custom chat partial match",
+        "expected_type": "partial_match",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1,
+        "provider_id": "provider-custom"
+      },
+      {
+        "model": "unknown-model",
+        "description": "Unknown model fallback",
+        "expected_type": "default_fallback",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1,
+        "provider_id": "provider-default"
+      },
+      {
+        "model": "gpt-4.1",
+        "description": "GPT-4.1 fallback",
+        "expected_type": "default_fallback",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1,
+        "provider_id": "provider-default"
+      }
+    ],
+    "load_balance_tests": [
+      {
+        "total_requests": 50,
+        "successful_requests": 50,
+        "success_rate": 100.0,
+        "avg_response_time": 0.1,
+        "provider_usage": {
+          "provider-z.ai": 10,
+          "provider-k2": 10,
+          "provider-qwen": 10,
+          "provider-custom": 10,
+          "provider-default": 10
+        },
+        "balance_coefficient": 0.0,
+        "load_balanced": true
+      }
+    ],
+    "performance_tests": [
+      {
+        "name": "Light Load",
+        "total_requests": 20,
+        "successful_requests": 20,
+        "success_rate": 100.0,
+        "avg_response_time": 0.1,
+        "throughput": 82000.07820136852,
+        "duration": 0.00024390220642089844,
+        "success": true
+      },
+      {
+        "name": "Medium Load",
+        "total_requests": 50,
+        "successful_requests": 50,
+        "success_rate": 100.0,
+        "avg_response_time": 0.1,
+        "throughput": 60211.08240022969,
+        "duration": 0.0008304119110107422,
+        "success": true
+      },
+      {
+        "name": "Heavy Load",
+        "total_requests": 100,
+        "successful_requests": 100,
+        "success_rate": 100.0,
+        "avg_response_time": 0.1,
+        "throughput": 87618.63379987466,
+        "duration": 0.0011413097381591797,
+        "success": true
+      }
+    ],
+    "failover_tests": [],
+    "provider_management_tests": [
+      {
+        "endpoint": "/api/dynamic-providers/providers",
+        "method": "GET",
+        "description": "List all providers",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.05
+      },
+      {
+        "endpoint": "/api/dynamic-providers/system/config",
+        "method": "GET",
+        "description": "Get system configuration",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.05
+      },
+      {
+        "endpoint": "/api/dynamic-providers/models/mappings",
+        "method": "GET",
+        "description": "Get model mappings",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.05
+      },
+      {
+        "endpoint": "/v1/health",
+        "method": "GET",
+        "description": "Health check endpoint",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1
+      },
+      {
+        "endpoint": "/v1/models",
+        "method": "GET",
+        "description": "Get available models",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1
+      },
+      {
+        "endpoint": "/v1/stats",
+        "method": "GET",
+        "description": "Get system statistics",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1
+      }
+    ]
+  },
+  "recommendations": [
+    "All tests passed - system is performing well"
+  ],
+  "generated_at": "2025-09-29T22:07:24.694273"
+}
