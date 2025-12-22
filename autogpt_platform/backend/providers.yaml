@@ -1,0 +1,20 @@
+default_provider: Z.AI
+providers:
+- description: Z.AI chat service
+  is_default: true
+  models:
+  - z.ai
+  - gpt-3.5-turbo
+  - gpt-4
+  name: Z.AI
+  password: your-password
+  tags:
+  - ai
+  - chat
+  url: https://chat.z.ai
+  username: your-email@example.com
+settings:
+  auto_reload: true
+  encryption_enabled: true
+  max_retries: 3
+  request_timeout: 120

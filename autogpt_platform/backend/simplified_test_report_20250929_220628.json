@@ -1,0 +1,171 @@
+{
+  "test_summary": {
+    "total_tests": 16,
+    "passed_tests": 9,
+    "failed_tests": 7,
+    "success_rate": 56.25,
+    "test_duration": 0.01862621307373047
+  },
+  "test_results": {
+    "routing_tests": [
+      {
+        "model": "z.ai",
+        "description": "Z.AI exact match",
+        "expected_type": "exact_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "'MockResponse' object has no attribute 'request_count'"
+      },
+      {
+        "model": "k2",
+        "description": "K2Think exact match",
+        "expected_type": "exact_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "'MockResponse' object has no attribute 'request_count'"
+      },
+      {
+        "model": "qwen",
+        "description": "Qwen exact match",
+        "expected_type": "exact_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "'MockResponse' object has no attribute 'request_count'"
+      },
+      {
+        "model": "custom-chat",
+        "description": "Custom chat partial match",
+        "expected_type": "partial_match",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "'MockResponse' object has no attribute 'request_count'"
+      },
+      {
+        "model": "unknown-model",
+        "description": "Unknown model fallback",
+        "expected_type": "default_fallback",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "'MockResponse' object has no attribute 'request_count'"
+      },
+      {
+        "model": "gpt-4.1",
+        "description": "GPT-4.1 fallback",
+        "expected_type": "default_fallback",
+        "status_code": 0,
+        "success": false,
+        "response_time": 0,
+        "error": "'MockResponse' object has no attribute 'request_count'"
+      }
+    ],
+    "load_balance_tests": [
+      {
+        "total_requests": 50,
+        "successful_requests": 50,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "provider_usage": {
+          "provider-z.ai": 10,
+          "provider-k2": 10,
+          "provider-qwen": 10,
+          "provider-custom": 10,
+          "provider-default": 10
+        },
+        "balance_coefficient": 0.0,
+        "load_balanced": true
+      }
+    ],
+    "performance_tests": [
+      {
+        "name": "Light Load",
+        "total_requests": 20,
+        "successful_requests": 20,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "throughput": 11567.302813017099,
+        "duration": 0.0017290115356445312,
+        "success": true
+      },
+      {
+        "name": "Medium Load",
+        "total_requests": 50,
+        "successful_requests": 50,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "throughput": 13838.020455295282,
+        "duration": 0.0036132335662841797,
+        "success": true
+      },
+      {
+        "name": "Heavy Load",
+        "total_requests": 100,
+        "successful_requests": 100,
+        "success_rate": 100.0,
+        "avg_response_time": 0,
+        "throughput": 14071.54024222498,
+        "duration": 0.0071065425872802734,
+        "success": true
+      }
+    ],
+    "failover_tests": [],
+    "provider_management_tests": [
+      {
+        "endpoint": "/api/dynamic-providers/providers",
+        "method": "GET",
+        "description": "List all providers",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.05
+      },
+      {
+        "endpoint": "/api/dynamic-providers/system/config",
+        "method": "GET",
+        "description": "Get system configuration",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.05
+      },
+      {
+        "endpoint": "/api/dynamic-providers/models/mappings",
+        "method": "GET",
+        "description": "Get model mappings",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.05
+      },
+      {
+        "endpoint": "/v1/health",
+        "method": "GET",
+        "description": "Health check endpoint",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1
+      },
+      {
+        "endpoint": "/v1/models",
+        "method": "GET",
+        "description": "Get available models",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1
+      },
+      {
+        "endpoint": "/v1/stats",
+        "method": "GET",
+        "description": "Get system statistics",
+        "status_code": 200,
+        "success": true,
+        "response_time": 0.1
+      }
+    ]
+  },
+  "recommendations": [
+    "Fix 6 routing test failures - check model mapping configuration"
+  ],
+  "generated_at": "2025-09-29T22:06:28.664300"
+}

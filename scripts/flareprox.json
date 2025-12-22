@@ -1,0 +1,23 @@
+{
+  "endpoints": [
+    {
+      "name": "flareprox-endpoint-1",
+      "url": "https://flareprox-1759143970-0.mock-flareprox.workers.dev",
+      "created_at": "2025-09-29 11:06:10",
+      "active": true
+    },
+    {
+      "name": "flareprox-endpoint-2",
+      "url": "https://flareprox-1759143970-0.mock-flareprox.workers.dev",
+      "created_at": "2025-09-29 11:06:10",
+      "active": true
+    },
+    {
+      "name": "flareprox-endpoint-3",
+      "url": "https://flareprox-1759143970-0.mock-flareprox.workers.dev",
+      "created_at": "2025-09-29 11:06:10",
+      "active": true
+    }
+  ],
+  "last_updated": "2025-09-29 11:06:10"
+}

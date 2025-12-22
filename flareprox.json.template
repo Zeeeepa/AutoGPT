@@ -1,0 +1,15 @@
+{
+  "cloudflare": {
+    "api_token": "YOUR_CLOUDFLARE_API_TOKEN",
+    "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+    "zone_id": "YOUR_CLOUDFLARE_ZONE_ID"
+  },
+  "endpoints": [],
+  "settings": {
+    "max_endpoints": 5,
+    "endpoint_timeout": 30,
+    "health_check_interval": 300,
+    "auto_cleanup": true
+  },
+  "last_updated": ""
+}
